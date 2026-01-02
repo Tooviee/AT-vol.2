@@ -1,0 +1,172 @@
+# usa_stock_trading_config.yaml - Final v6
+
+# ===== SYSTEM =====
+python_version: "3.11+"  # Required
+
+# ===== TRADING MODE =====
+mode: "paper"  # "paper" | "live"
+
+# ===== TIMEZONE =====
+timezone:
+  local: "Asia/Seoul"
+  market: "America/New_York"
+
+# ===== DISPLAY =====
+display:
+  currency_label: "krw"
+  show_usd_equivalent: true
+
+# ===== SYMBOLS =====
+symbols:
+  - AAPL
+  - MSFT
+  - GOOGL
+  - NVDA
+  - AMZN
+  - TSLA
+
+# ===== STRATEGY =====
+strategy:
+  sma_short: 50
+  sma_long: 200
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  rsi_period: 14
+  rsi_oversold: 30
+  rsi_overbought: 70
+  atr_period: 14  # For stop-loss/take-profit
+
+# ===== RISK =====
+risk:
+  risk_per_trade_percent: 1
+  max_position_size_percent: 10
+  stop_loss_atr_multiplier: 2.0
+  take_profit_atr_multiplier: 3.0
+  max_total_exposure_percent: 80
+  max_drawdown_percent: 15
+  max_correlated_positions: 3
+
+# ===== CIRCUIT BREAKER =====
+circuit_breaker:
+  max_consecutive_losses: 3
+  max_daily_loss_percent: 5.0
+  max_daily_loss_krw: 500000
+  loss_type: "realized"
+  api_error_threshold: 5
+  cooldown_minutes: 30
+
+# ===== ORDER MANAGEMENT =====
+order_management:
+  order_timeout_seconds: 60
+  stale_check_interval_seconds: 30
+  max_retry_attempts: 3
+  retry_delay_seconds: 5
+
+# ===== MARKET HOURS =====
+market_hours:
+  regular_open: "09:30"
+  regular_close: "16:00"
+  trade_premarket: false
+  trade_afterhours: false
+  premarket_start: "04:00"
+  afterhours_end: "20:00"
+  skip_holidays: true
+  early_close_buffer_minutes: 30
+
+# ===== RATE LIMITS =====
+rate_limits:
+  kis_api_calls_per_second: 5
+  yfinance_calls_per_second: 2
+  max_retry_attempts: 3
+  base_retry_delay_seconds: 1.0
+
+# ===== HEALTH MONITOR =====
+health_monitor:
+  heartbeat_interval_seconds: 60
+  alert_after_missed_heartbeats: 3
+  check_interval_seconds: 300
+
+# ===== NETWORK =====
+network:
+  check_urls:
+    - "https://www.google.com"
+    - "https://finance.yahoo.com"
+  timeout_seconds: 5
+  failure_threshold: 3
+
+# ===== NOTIFICATIONS =====
+notifications:
+  large_order_threshold_krw: 5000000
+  confirmation_timeout_seconds: 60
+
+# ===== PAPER TRADING =====
+paper_trading:
+  initial_balance_krw: 10000000
+  simulate_slippage: true
+  slippage_percent: 0.15
+  simulate_spread: true
+  spread_percent: 0.05
+  simulate_latency_ms: 100
+  simulate_partial_fills: false
+  partial_fill_probability: 0.1
+
+# ===== EXCHANGE RATE =====
+exchange_rate:
+  update_interval_minutes: 60
+  fallback_rate: 1450.0
+
+# ===== DATA VALIDATION =====
+data_validation:
+  max_data_age_minutes: 15
+  max_daily_change_percent: 50
+
+# ===== RECONCILIATION =====
+reconciliation:
+  run_on_startup: true
+  run_interval_minutes: 30
+  auto_sync_to_broker: false
+
+# ===== DATABASE =====
+database:
+  path: "data/trading.db"
+  busy_timeout_ms: 5000
+  backup_enabled: true
+  backup_interval_hours: 24
+  backup_path: "data/backups/"
+  keep_backups: 7
+
+# ===== LOGGING =====
+logging:
+  level: INFO
+  format: json
+  rotate_size_mb: 10
+  keep_days: 30
+
+# ===== DASHBOARD =====
+dashboard:
+  host: "127.0.0.1"
+  port: 8000
+  session_timeout_minutes: 30
+
+# ===== MACHINE LEARNING =====
+ml:
+  enabled: true                    # Enable ML confidence boosting
+  min_confidence: 0.6              # Minimum confidence to execute trade
+  ml_weight: 0.5                   # Weight for ML vs TA (0.5 = equal)
+  min_training_samples: 100        # Minimum trades before training
+  retrain_interval_days: 7         # How often to retrain
+  model_path: "ml/models/confidence_model.pkl"
+  data_path: "ml/training_data"
+  
+  # A/B Testing (compare ML vs non-ML)
+  ab_testing: false                # Enable A/B testing mode
+  ab_test_ratio: 0.5               # Ratio of trades using ML
+  
+  # Model parameters (LightGBM)
+  model_params:
+    num_leaves: 31
+    learning_rate: 0.05
+    n_estimators: 100
+
+

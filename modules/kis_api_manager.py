@@ -1,0 +1,425 @@
+"""
+KIS API Manager - Handles all interactions with Korea Investment & Securities API.
+Provides methods for getting prices, placing orders, and managing positions.
+"""
+
+import logging
+from typing import Dict, Any, Optional, List
+from datetime import datetime
+import requests
+import yfinance as yf
+
+from .kis_auth_custom import KISAuth
+
+
+class KISAPIManager:
+    """Manages all KIS API interactions"""
+    
+    def __init__(self, config: Dict[str, Any], logger: Optional[logging.Logger] = None):
+        """
+        Initialize KIS API Manager.
+        
+        Args:
+            config: Configuration dictionary containing KIS credentials
+            logger: Optional logger instance
+        """
+        self.logger = logger or logging.getLogger(__name__)
+        self.config = config
+        
+        # Initialize authentication
+        kis_config = config.get('kis', {})
+        self.auth = KISAuth(kis_config, self.logger)
+        
+        # Set mode based on config
+        is_paper = config.get('mode', 'paper') == 'paper'
+        self.auth.set_virtual_mode(is_paper)
+        
+        self.base_url = self.auth.base_url
+    
+    def _make_request(self, method: str, endpoint: str, 
+                      tr_id: str, params: Optional[Dict] = None,
+                      data: Optional[Dict] = None) -> Dict[str, Any]:
+        """
+        Make authenticated request to KIS API.
+        
+        Args:
+            method: HTTP method (GET, POST)
+            endpoint: API endpoint
+            tr_id: Transaction ID
+            params: Query parameters
+            data: Request body
+            
+        Returns:
+            Response data as dictionary
+        """
+        url = f"{self.base_url}{endpoint}"
+        headers = self.auth.get_headers(tr_id)
+        
+        try:
+            if method.upper() == 'GET':
+                response = requests.get(url, headers=headers, params=params, timeout=30)
+            else:
+                response = requests.post(url, headers=headers, json=data, timeout=30)
+            
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"API request failed: {e}")
+            raise
+    
+    def get_price_yfinance(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """
+        Get current price using yfinance as fallback.
+        
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            
+        Returns:
+            Dictionary with price data or None
+        """
+        try:
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period='1d', interval='1m')
+            
+            if hist.empty:
+                self.logger.warning(f"No data returned for {symbol}")
+                return None
+            
+            latest = hist.iloc[-1]
+            
+            return {
+                'symbol': symbol,
+                'open': float(latest['Open']),
+                'high': float(latest['High']),
+                'low': float(latest['Low']),
+                'close': float(latest['Close']),
+                'volume': int(latest['Volume']),
+                'timestamp': hist.index[-1].to_pydatetime()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get price for {symbol} via yfinance: {e}")
+            return None
+    
+    def get_price(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """
+        Get current stock price.
+        Uses yfinance as the data source for US stocks.
+        
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            
+        Returns:
+            Dictionary with price data or None
+        """
+        # For US stocks, use yfinance
+        return self.get_price_yfinance(symbol)
+    
+    def get_prices(self, symbols: List[str]) -> Dict[str, Optional[Dict[str, Any]]]:
+        """
+        Get current prices for multiple symbols.
+        
+        Args:
+            symbols: List of stock symbols
+            
+        Returns:
+            Dictionary mapping symbols to price data
+        """
+        prices = {}
+        for symbol in symbols:
+            prices[symbol] = self.get_price(symbol)
+        return prices
+    
+    def get_historical_data(self, symbol: str, period: str = '1mo', 
+                            interval: str = '1d') -> Optional[Any]:
+        """
+        Get historical price data.
+        
+        Args:
+            symbol: Stock symbol
+            period: Time period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+            interval: Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)
+            
+        Returns:
+            DataFrame with historical data or None
+        """
+        try:
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period=period, interval=interval)
+            
+            if hist.empty:
+                self.logger.warning(f"No historical data for {symbol}")
+                return None
+            
+            return hist
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get historical data for {symbol}: {e}")
+            return None
+    
+    def get_account_balance(self) -> Optional[Dict[str, Any]]:
+        """
+        Get account balance information.
+        
+        Returns:
+            Dictionary with balance information or None
+        """
+        try:
+            account_info = self.auth.get_account_info()
+            
+            # For US stocks overseas trading
+            endpoint = "/uapi/overseas-stock/v1/trading/inquire-balance"
+            tr_id = "TTTS3012R" if self.config.get('mode') == 'live' else "VTTS3012R"
+            
+            params = {
+                "CANO": account_info['account_number'][:8],
+                "ACNT_PRDT_CD": account_info['account_number'][8:] or "01",
+                "OVRS_EXCG_CD": "NASD",  # NASDAQ
+                "TR_CRCY_CD": "USD",
+                "CTX_AREA_FK200": "",
+                "CTX_AREA_NK200": ""
+            }
+            
+            response = self._make_request('GET', endpoint, tr_id, params=params)
+            
+            if response.get('rt_cd') == '0':
+                return {
+                    'total_balance': float(response.get('output2', [{}])[0].get('tot_evlu_amt', 0)),
+                    'available_cash': float(response.get('output2', [{}])[0].get('frcr_pchs_amt', 0)),
+                    'currency': 'USD'
+                }
+            else:
+                self.logger.error(f"Failed to get balance: {response.get('msg1')}")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error getting account balance: {e}")
+            return None
+    
+    def get_positions(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get current positions.
+        
+        Returns:
+            Dictionary mapping symbols to position data
+        """
+        try:
+            account_info = self.auth.get_account_info()
+            
+            endpoint = "/uapi/overseas-stock/v1/trading/inquire-balance"
+            tr_id = "TTTS3012R" if self.config.get('mode') == 'live' else "VTTS3012R"
+            
+            params = {
+                "CANO": account_info['account_number'][:8],
+                "ACNT_PRDT_CD": account_info['account_number'][8:] or "01",
+                "OVRS_EXCG_CD": "NASD",
+                "TR_CRCY_CD": "USD",
+                "CTX_AREA_FK200": "",
+                "CTX_AREA_NK200": ""
+            }
+            
+            response = self._make_request('GET', endpoint, tr_id, params=params)
+            
+            positions = {}
+            if response.get('rt_cd') == '0':
+                for item in response.get('output1', []):
+                    symbol = item.get('ovrs_pdno', '')
+                    if symbol and int(item.get('ovrs_cblc_qty', 0)) > 0:
+                        positions[symbol] = {
+                            'symbol': symbol,
+                            'quantity': int(item.get('ovrs_cblc_qty', 0)),
+                            'avg_price': float(item.get('pchs_avg_pric', 0)),
+                            'current_price': float(item.get('now_pric2', 0)),
+                            'unrealized_pnl': float(item.get('frcr_evlu_pfls_amt', 0))
+                        }
+            
+            return positions
+            
+        except Exception as e:
+            self.logger.error(f"Error getting positions: {e}")
+            return {}
+    
+    def place_order(self, symbol: str, side: str, quantity: int,
+                    order_type: str = 'market', limit_price: Optional[float] = None) -> Optional[Dict[str, Any]]:
+        """
+        Place an order.
+        
+        Args:
+            symbol: Stock symbol
+            side: 'buy' or 'sell'
+            quantity: Number of shares
+            order_type: 'market' or 'limit'
+            limit_price: Price for limit orders
+            
+        Returns:
+            Order result or None
+        """
+        try:
+            account_info = self.auth.get_account_info()
+            
+            # Determine transaction ID based on side and mode
+            is_live = self.config.get('mode') == 'live'
+            if side.lower() == 'buy':
+                tr_id = "TTTT1002U" if is_live else "VTTT1002U"
+            else:
+                tr_id = "TTTT1006U" if is_live else "VTTT1006U"
+            
+            endpoint = "/uapi/overseas-stock/v1/trading/order"
+            
+            # Order type code
+            if order_type == 'market':
+                ord_dvsn = "00"  # Market order
+                price = "0"
+            else:
+                ord_dvsn = "00"  # Limit order
+                price = str(limit_price)
+            
+            data = {
+                "CANO": account_info['account_number'][:8],
+                "ACNT_PRDT_CD": account_info['account_number'][8:] or "01",
+                "OVRS_EXCG_CD": "NASD",
+                "PDNO": symbol,
+                "ORD_QTY": str(quantity),
+                "OVRS_ORD_UNPR": price,
+                "ORD_SVR_DVSN_CD": "0",
+                "ORD_DVSN": ord_dvsn
+            }
+            
+            response = self._make_request('POST', endpoint, tr_id, data=data)
+            
+            if response.get('rt_cd') == '0':
+                return {
+                    'order_id': response.get('output', {}).get('ODNO', ''),
+                    'symbol': symbol,
+                    'side': side,
+                    'quantity': quantity,
+                    'order_type': order_type,
+                    'status': 'submitted',
+                    'timestamp': datetime.now()
+                }
+            else:
+                self.logger.error(f"Order failed: {response.get('msg1')}")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error placing order: {e}")
+            return None
+    
+    def cancel_order(self, order_id: str, symbol: str, quantity: int) -> bool:
+        """
+        Cancel an order.
+        
+        Args:
+            order_id: Order ID to cancel
+            symbol: Stock symbol
+            quantity: Original order quantity
+            
+        Returns:
+            True if cancelled successfully
+        """
+        try:
+            account_info = self.auth.get_account_info()
+            
+            is_live = self.config.get('mode') == 'live'
+            tr_id = "TTTT1004U" if is_live else "VTTT1004U"
+            
+            endpoint = "/uapi/overseas-stock/v1/trading/order-rvsecncl"
+            
+            data = {
+                "CANO": account_info['account_number'][:8],
+                "ACNT_PRDT_CD": account_info['account_number'][8:] or "01",
+                "OVRS_EXCG_CD": "NASD",
+                "PDNO": symbol,
+                "ORGN_ODNO": order_id,
+                "RVSE_CNCL_DVSN_CD": "02",  # Cancel
+                "ORD_QTY": str(quantity),
+                "OVRS_ORD_UNPR": "0",
+                "ORD_SVR_DVSN_CD": "0"
+            }
+            
+            response = self._make_request('POST', endpoint, tr_id, data=data)
+            
+            if response.get('rt_cd') == '0':
+                self.logger.info(f"Order {order_id} cancelled successfully")
+                return True
+            else:
+                self.logger.error(f"Cancel failed: {response.get('msg1')}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error cancelling order: {e}")
+            return False
+    
+    def get_order_status(self, order_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get order status.
+        
+        Args:
+            order_id: Order ID to check
+            
+        Returns:
+            Order status or None
+        """
+        try:
+            account_info = self.auth.get_account_info()
+            
+            is_live = self.config.get('mode') == 'live'
+            tr_id = "TTTS3035R" if is_live else "VTTS3035R"
+            
+            endpoint = "/uapi/overseas-stock/v1/trading/inquire-nccs"
+            
+            params = {
+                "CANO": account_info['account_number'][:8],
+                "ACNT_PRDT_CD": account_info['account_number'][8:] or "01",
+                "OVRS_EXCG_CD": "NASD",
+                "SORT_SQN": "DS",
+                "CTX_AREA_FK200": "",
+                "CTX_AREA_NK200": ""
+            }
+            
+            response = self._make_request('GET', endpoint, tr_id, params=params)
+            
+            if response.get('rt_cd') == '0':
+                for order in response.get('output', []):
+                    if order.get('odno') == order_id:
+                        return {
+                            'order_id': order_id,
+                            'status': self._parse_order_status(order),
+                            'filled_quantity': int(order.get('ft_ccld_qty', 0)),
+                            'remaining_quantity': int(order.get('nccs_qty', 0))
+                        }
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error getting order status: {e}")
+            return None
+    
+    def _parse_order_status(self, order_data: Dict) -> str:
+        """Parse order status from API response"""
+        # This is simplified - actual implementation would need proper status mapping
+        filled_qty = int(order_data.get('ft_ccld_qty', 0))
+        total_qty = int(order_data.get('ft_ord_qty', 0))
+        
+        if filled_qty == total_qty:
+            return 'filled'
+        elif filled_qty > 0:
+            return 'partial_fill'
+        else:
+            return 'submitted'
+    
+    def ping(self) -> bool:
+        """Check API connectivity"""
+        try:
+            # Try to get token - this will verify connectivity
+            self.auth.get_access_token()
+            return True
+        except Exception:
+            return False
+    
+    def close(self) -> None:
+        """Clean up resources"""
+        self.auth.revoke_token()
+
+

@@ -1,0 +1,45 @@
+# requirements.txt - Final v7 (with ML)
+
+# Core
+pyyaml==6.0.1
+python-dotenv==1.0.0
+pydantic==2.5.3
+
+# Data & Trading
+yfinance==0.2.33
+pandas==2.1.4
+numpy==1.26.2
+requests==2.31.0
+pytz==2023.3
+
+# Database
+sqlalchemy==2.0.23
+
+# Scheduling
+apscheduler==3.10.4
+
+# Market Hours
+exchange-calendars==4.5.2
+
+# Discord Bot
+discord.py==2.3.2
+
+# Dashboard
+fastapi==0.109.0
+uvicorn==0.25.0
+jinja2==3.1.2
+python-multipart==0.0.6
+
+# Charts
+plotly==5.18.0
+
+# ===== Machine Learning =====
+lightgbm==4.1.0
+scikit-learn==1.3.2
+joblib==1.3.2
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.23.2
+
+
