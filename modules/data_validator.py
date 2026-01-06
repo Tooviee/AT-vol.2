@@ -62,22 +62,22 @@ class DataValidator:
         try:
             if hasattr(df, 'index') and len(df.index) > 0:
                 last_timestamp = df.index[-1]
-                
+
                 # Handle timezone
                 if hasattr(last_timestamp, 'tz') and last_timestamp.tz is None:
                     last_timestamp = last_timestamp.tz_localize('UTC')
                 elif hasattr(last_timestamp, 'tzinfo') and last_timestamp.tzinfo is None:
                     last_timestamp = last_timestamp.replace(tzinfo=pytz.UTC)
-                
+                                       
                 now = datetime.now(pytz.UTC)
                 if hasattr(last_timestamp, 'to_pydatetime'):
                     last_timestamp = last_timestamp.to_pydatetime()
-                
+                    
                 # Ensure both are timezone-aware for comparison
                 if hasattr(last_timestamp, 'tzinfo') and last_timestamp.tzinfo:
                     age = now - last_timestamp
                     max_age = timedelta(minutes=self.max_data_age_minutes)
-                    
+                        
                     if age > max_age:
                         age_minutes = age.total_seconds() / 60
                         return False, f"{symbol}: Data is {age_minutes:.0f}min old (max: {self.max_data_age_minutes}min)"
@@ -116,12 +116,47 @@ class DataValidator:
         # Check for OHLC consistency
         try:
             if all(col in df.columns for col in ['High', 'Low', 'Open', 'Close']):
-                if not ((df['High'] >= df['Low']).all() and 
-                        (df['High'] >= df['Close']).all() and 
-                        (df['High'] >= df['Open']).all()):
-                    return False, f"{symbol}: OHLC values inconsistent"
-        except Exception:
-            pass
+                issues = []
+                bad_dates = []
+                
+                # Check High >= Low
+                high_low_issue = df['High'] < df['Low']
+                if high_low_issue.any():
+                    bad_rows = df[high_low_issue]
+                    if hasattr(bad_rows.index[0], 'strftime'):
+                        dates = bad_rows.index.strftime('%Y-%m-%d').tolist()
+                    else:
+                        dates = [str(d) for d in bad_rows.index]
+                    issues.append(f"High<Low on {high_low_issue.sum()} date(s)")
+                    bad_dates.extend(dates[:3])
+                
+                # Check High >= Close
+                high_close_issue = df['High'] < df['Close']
+                if high_close_issue.any():
+                    bad_rows = df[high_close_issue]
+                    if hasattr(bad_rows.index[0], 'strftime'):
+                        dates = bad_rows.index.strftime('%Y-%m-%d').tolist()
+                    else:
+                        dates = [str(d) for d in bad_rows.index]
+                    issues.append(f"High<Close on {high_close_issue.sum()} date(s)")
+                    bad_dates.extend(dates[:3])
+                
+                # Check High >= Open
+                high_open_issue = df['High'] < df['Open']
+                if high_open_issue.any():
+                    bad_rows = df[high_open_issue]
+                    if hasattr(bad_rows.index[0], 'strftime'):
+                        dates = bad_rows.index.strftime('%Y-%m-%d').tolist()
+                    else:
+                        dates = [str(d) for d in bad_rows.index]
+                    issues.append(f"High<Open on {high_open_issue.sum()} date(s)")
+                    bad_dates.extend(dates[:3])
+                
+                if issues:
+                    unique_dates = ', '.join(sorted(set(bad_dates))[:3])
+                    return False, f"{symbol}: OHLC values inconsistent - {'; '.join(issues)} on {unique_dates}"
+        except Exception as e:
+            self.logger.warning(f"Could not check OHLC consistency for {symbol}: {e}")
         
         return True, "OK"
     

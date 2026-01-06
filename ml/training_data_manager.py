@@ -177,7 +177,14 @@ class TrainingDataManager:
                 'win_count': 0,
                 'loss_count': 0,
                 'win_rate': 0,
-                'avg_pnl_percent': 0
+                'avg_pnl_percent': 0,
+                'avg_win_pnl': 0,
+                'avg_loss_pnl': 0,
+                'pending_trades': len(self.pending_trades),
+                'date_range': {
+                    'first': None,
+                    'last': None
+                }
             }
         
         wins = [f for f in data if f.outcome_won]

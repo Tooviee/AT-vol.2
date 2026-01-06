@@ -139,7 +139,7 @@ def analyze_data(data_path: str = "ml/training_data",
     logger.info(f"Avg Loss: {stats['avg_loss_pnl']:.2f}%")
     logger.info(f"Pending trades: {stats['pending_trades']}")
     
-    if stats['date_range']['first']:
+    if stats.get('date_range', {}).get('first'):
         logger.info(f"Date range: {stats['date_range']['first']} to {stats['date_range']['last']}")
     
     if output_csv:

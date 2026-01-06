@@ -1,5 +1,6 @@
 # Environment
 .env
+accounts.yaml
 .venv/
 venv/
 env/

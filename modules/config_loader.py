@@ -179,8 +179,11 @@ class MLModelParams(BaseModel):
 
 class MLConfig(BaseModel):
     """Machine Learning configuration"""
+    model_config = {"protected_namespaces": ()}  # Allow 'model_' prefix
+    
     enabled: bool = True
     min_confidence: float = 0.6
+    min_confidence_ta_only: float = 0.4  # Lower threshold when ML not trained
     ml_weight: float = 0.5
     min_training_samples: int = 100
     retrain_interval_days: int = 7

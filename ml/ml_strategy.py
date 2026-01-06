@@ -66,14 +66,24 @@ class MLEnhancedStrategy(USAStrategy):
         # Settings
         self.ml_enabled = self.ml_config.get('enabled', True)
         self.min_confidence = self.ml_config.get('min_confidence', 0.6)
+        # Lower threshold for TA-only when ML is not trained (allows trading to collect data)
+        self.min_confidence_ta_only = self.ml_config.get('min_confidence_ta_only', 0.4)
         self.use_ab_testing = self.ml_config.get('ab_testing', False)
         self.ab_test_ratio = self.ml_config.get('ab_test_ratio', 0.5)
         
         # Tracking
         self._last_signal_time: Dict[str, pd.Timestamp] = {}
         
+        # Log initialization status
+        ml_status = "enabled"
+        if not self.confidence_booster.is_trained:
+            ml_status = "enabled but not trained (using TA-only threshold)"
+        elif not self.ml_enabled:
+            ml_status = "disabled"
+        
         self.logger.info(
-            f"ML-Enhanced Strategy initialized. ML enabled: {self.ml_enabled}"
+            f"ML-Enhanced Strategy initialized. ML: {ml_status}. "
+            f"Thresholds: ML={self.min_confidence:.2f}, TA-only={self.min_confidence_ta_only:.2f}"
         )
     
     def generate_signal(self, df: pd.DataFrame, symbol: str,
@@ -172,6 +182,7 @@ class MLEnhancedStrategy(USAStrategy):
     def should_execute(self, signal: EnhancedTradeSignal) -> Tuple[bool, str]:
         """
         Determine if signal should be executed based on ML confidence.
+        Uses lower threshold for TA-only when ML is not trained.
         
         Args:
             signal: Enhanced trade signal
@@ -186,8 +197,19 @@ class MLEnhancedStrategy(USAStrategy):
         # Check confidence threshold
         final_confidence = signal.final_confidence
         
-        if final_confidence < self.min_confidence:
-            return False, f"Confidence {final_confidence:.2f} < {self.min_confidence}"
+        # Use lower threshold when ML is not trained/available (TA-only mode)
+        # This allows trading to collect data for ML training
+        if signal.ml_enabled:
+            # ML is active - use full threshold
+            threshold = self.min_confidence
+            threshold_type = "ML"
+        else:
+            # ML not available - use lower TA-only threshold
+            threshold = self.min_confidence_ta_only
+            threshold_type = "TA-only"
+        
+        if final_confidence < threshold:
+            return False, f"Confidence {final_confidence:.2f} < {threshold} ({threshold_type})"
         
         # A/B testing mode
         if self.use_ab_testing:
@@ -197,7 +219,7 @@ class MLEnhancedStrategy(USAStrategy):
                 if signal.confidence < self.min_confidence:
                     return False, f"A/B control: base confidence {signal.confidence:.2f} < {self.min_confidence}"
         
-        return True, f"Confidence {final_confidence:.2f} >= {self.min_confidence}"
+        return True, f"Confidence {final_confidence:.2f} >= {threshold} ({threshold_type})"
     
     def record_trade_start(self, order_id: str, signal: EnhancedTradeSignal) -> None:
         """

@@ -4,12 +4,32 @@ Provides methods for getting prices, placing orders, and managing positions.
 """
 
 import logging
+import time
+import random
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
-import yfinance as yf
+import pandas as pd
 
 from .kis_auth_custom import KISAuth
+
+
+# Configure yfinance with proper session
+def _create_yf_session() -> requests.Session:
+    """Create a requests session with proper headers for Yahoo Finance"""
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+    })
+    return session
+
+
+# Global session for yfinance
+_YF_SESSION = _create_yf_session()
 
 
 class KISAPIManager:
@@ -68,39 +88,62 @@ class KISAPIManager:
             self.logger.error(f"API request failed: {e}")
             raise
     
-    def get_price_yfinance(self, symbol: str) -> Optional[Dict[str, Any]]:
+    def get_price_yfinance(self, symbol: str, max_retries: int = 3) -> Optional[Dict[str, Any]]:
         """
-        Get current price using yfinance as fallback.
+        Get current price using yfinance with retry logic.
         
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
+            max_retries: Maximum number of retry attempts
             
         Returns:
             Dictionary with price data or None
         """
-        try:
-            ticker = yf.Ticker(symbol)
-            hist = ticker.history(period='1d', interval='1m')
-            
-            if hist.empty:
-                self.logger.warning(f"No data returned for {symbol}")
-                return None
-            
-            latest = hist.iloc[-1]
-            
-            return {
-                'symbol': symbol,
-                'open': float(latest['Open']),
-                'high': float(latest['High']),
-                'low': float(latest['Low']),
-                'close': float(latest['Close']),
-                'volume': int(latest['Volume']),
-                'timestamp': hist.index[-1].to_pydatetime()
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Failed to get price for {symbol} via yfinance: {e}")
-            return None
+        import yfinance as yf
+        
+        for attempt in range(max_retries):
+            try:
+                # Use Ticker.history() which returns cleaner column structure
+                ticker = yf.Ticker(symbol)
+                hist = ticker.history(period='5d', interval='1d')
+                
+                if hist is None or hist.empty:
+                    # Add delay before retry
+                    if attempt < max_retries - 1:
+                        delay = (2 ** attempt) + random.uniform(0, 1)
+                        self.logger.debug(f"No data for {symbol}, retrying in {delay:.1f}s...")
+                        time.sleep(delay)
+                        continue
+                    self.logger.warning(f"No data returned for {symbol} after {max_retries} attempts")
+                    return None
+                
+                latest = hist.iloc[-1]
+                
+                # Handle potential Series/scalar values
+                def get_val(val):
+                    if hasattr(val, 'iloc'):
+                        return val.iloc[0]
+                    return val
+                
+                return {
+                    'symbol': symbol,
+                    'open': float(get_val(latest['Open'])),
+                    'high': float(get_val(latest['High'])),
+                    'low': float(get_val(latest['Low'])),
+                    'close': float(get_val(latest['Close'])),
+                    'volume': int(get_val(latest['Volume'])) if pd.notna(get_val(latest['Volume'])) else 0,
+                    'timestamp': hist.index[-1].to_pydatetime()
+                }
+                
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    delay = (2 ** attempt) + random.uniform(0, 1)
+                    self.logger.debug(f"Error fetching {symbol}: {e}, retrying in {delay:.1f}s...")
+                    time.sleep(delay)
+                else:
+                    self.logger.error(f"Failed to get price for {symbol} after {max_retries} attempts: {e}")
+        
+        return None
     
     def get_price(self, symbol: str) -> Optional[Dict[str, Any]]:
         """
@@ -119,6 +162,7 @@ class KISAPIManager:
     def get_prices(self, symbols: List[str]) -> Dict[str, Optional[Dict[str, Any]]]:
         """
         Get current prices for multiple symbols.
+        Uses individual fetches with small delays to avoid rate limiting.
         
         Args:
             symbols: List of stock symbols
@@ -127,36 +171,58 @@ class KISAPIManager:
             Dictionary mapping symbols to price data
         """
         prices = {}
-        for symbol in symbols:
+        
+        for i, symbol in enumerate(symbols):
             prices[symbol] = self.get_price(symbol)
+            
+            # Add small delay between requests to avoid rate limiting
+            if i < len(symbols) - 1:
+                time.sleep(0.3)
+        
         return prices
     
     def get_historical_data(self, symbol: str, period: str = '1mo', 
-                            interval: str = '1d') -> Optional[Any]:
+                            interval: str = '1d', max_retries: int = 3) -> Optional[Any]:
         """
-        Get historical price data.
+        Get historical price data with retry logic.
         
         Args:
             symbol: Stock symbol
             period: Time period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
             interval: Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)
+            max_retries: Maximum retry attempts
             
         Returns:
             DataFrame with historical data or None
         """
-        try:
-            ticker = yf.Ticker(symbol)
-            hist = ticker.history(period=period, interval=interval)
-            
-            if hist.empty:
-                self.logger.warning(f"No historical data for {symbol}")
-                return None
-            
-            return hist
-            
-        except Exception as e:
-            self.logger.error(f"Failed to get historical data for {symbol}: {e}")
-            return None
+        import yfinance as yf
+        
+        for attempt in range(max_retries):
+            try:
+                # Use Ticker.history() which returns clean single-level columns
+                ticker = yf.Ticker(symbol)
+                hist = ticker.history(period=period, interval=interval)
+                
+                if hist is None or hist.empty:
+                    if attempt < max_retries - 1:
+                        delay = (2 ** attempt) + random.uniform(0, 1)
+                        self.logger.debug(f"No historical data for {symbol}, retrying in {delay:.1f}s...")
+                        time.sleep(delay)
+                        continue
+                    self.logger.warning(f"No historical data for {symbol} after {max_retries} attempts")
+                    return None
+                
+                return hist
+                
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    delay = (2 ** attempt) + random.uniform(0, 1)
+                    self.logger.debug(f"Error fetching {symbol} history: {e}, retrying in {delay:.1f}s...")
+                    time.sleep(delay)
+                else:
+                    self.logger.error(f"Failed to get historical data for {symbol} after {max_retries} attempts: {e}")
+        
+        return None
     
     def get_account_balance(self) -> Optional[Dict[str, Any]]:
         """

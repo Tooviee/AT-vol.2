@@ -1,0 +1,49 @@
+# Cursor Agent Rules for AT vol.2 Trading System
+
+## Python Virtual Environment
+**CRITICAL**: Always use the virtual environment's Python interpreter when running Python commands.
+
+### Required Pattern for PowerShell:
+**ALWAYS** use this exact pattern for ALL Python commands:
+
+```powershell
+cd "C:\Users\PRO\Desktop\AT vol.2"; if (Test-Path "venv\Scripts\python.exe") { & "venv\Scripts\python.exe" [command and args] } else { Write-Host "Error: venv not found at venv\Scripts\python.exe" -ForegroundColor Red; exit 1 }
+```
+
+### Simplified Pattern (when already in project directory):
+If you're already in the project directory, use:
+```powershell
+& "venv\Scripts\python.exe" [command and args]
+```
+
+### Examples:
+✅ CORRECT:
+```powershell
+cd "C:\Users\PRO\Desktop\AT vol.2"; & "venv\Scripts\python.exe" -m ml.trainer analyze
+cd "C:\Users\PRO\Desktop\AT vol.2"; & "venv\Scripts\python.exe" check_ml_data.py
+cd "C:\Users\PRO\Desktop\AT vol.2"; & "venv\Scripts\python.exe" -c "import pandas; print('OK')"
+```
+
+❌ WRONG (will fail):
+```powershell
+python -m ml.trainer analyze
+.\venv\Scripts\python.exe check_ml_data.py
+venv\Scripts\python.exe check_ml_data.py
+& ".\venv\Scripts\python.exe" check_ml_data.py
+```
+
+### Key Rules:
+1. **ALWAYS** change to project directory first: `cd "C:\Users\PRO\Desktop\AT vol.2"` (or use workspace root path)
+2. **ALWAYS** use `&` (call operator) with quoted relative path: `& "venv\Scripts\python.exe"`
+3. **NEVER** use `python` alone (uses system Python without dependencies)
+4. **NEVER** use `.\venv\Scripts\python.exe` - PowerShell doesn't recognize this syntax
+5. **NEVER** use `venv\Scripts\python.exe` without `&` operator - PowerShell will try to load it as a module
+6. Use relative path `venv\Scripts\python.exe` (not `.\venv\...`) after changing to project directory
+7. The `&` operator is REQUIRED in PowerShell to execute files with spaces or special characters in path
+
+## Project Context
+- This is a US stock trading system with ML capabilities
+- Uses virtual environment at `venv/` directory
+- All dependencies are installed in the venv (see requirements.txt)
+- User is in Mountain Time (America/Denver) but uses KRW currency labels for display
+

@@ -8,7 +8,7 @@ mode: "paper"  # "paper" | "live"
 
 # ===== TIMEZONE =====
 timezone:
-  local: "Asia/Seoul"
+  local: "America/Denver"  # Mountain Time
   market: "America/New_York"
 
 # ===== DISPLAY =====
@@ -24,6 +24,12 @@ symbols:
   - NVDA
   - AMZN
   - TSLA
+  - MU
+  - MSTR
+  - CRCL
+  - SMCI
+  - FLY
+  - RXRX
 
 # ===== STRATEGY =====
 strategy:
@@ -118,7 +124,9 @@ exchange_rate:
 
 # ===== DATA VALIDATION =====
 data_validation:
-  max_data_age_minutes: 15
+  # For daily data: set high to cover weekends (72+ hours)
+  # For intraday data: use 15 minutes
+  max_data_age_minutes: 4500  # ~75 hours (covers weekends + holidays)
   max_daily_change_percent: 50
 
 # ===== RECONCILIATION =====
@@ -152,7 +160,8 @@ dashboard:
 # ===== MACHINE LEARNING =====
 ml:
   enabled: true                    # Enable ML confidence boosting
-  min_confidence: 0.6              # Minimum confidence to execute trade
+  min_confidence: 0.6              # Minimum confidence to execute trade (when ML is trained)
+  min_confidence_ta_only: 0.4     # Lower threshold for TA-only when ML not trained (allows data collection)
   ml_weight: 0.5                   # Weight for ML vs TA (0.5 = equal)
   min_training_samples: 100        # Minimum trades before training
   retrain_interval_days: 7         # How often to retrain
