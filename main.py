@@ -277,7 +277,7 @@ class USAAutoTrader:
                 return
             
             # Get historical data for analysis
-            hist_data = self.kis_api.get_historical_data(symbol, period='1mo', interval='1d')
+            hist_data = self.kis_api.get_historical_data(symbol, period='1y', interval='1d')
             
             if hist_data is None or hist_data.empty:
                 self.logger.warning(f"No data for {symbol}")

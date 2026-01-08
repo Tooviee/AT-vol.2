@@ -33,6 +33,7 @@ symbols:
 
 # ===== STRATEGY =====
 strategy:
+  # Options: 50/200 (long-term, few signals), 20/50 (medium), 10/30 (active)
   sma_short: 50
   sma_long: 200
   macd_fast: 12
