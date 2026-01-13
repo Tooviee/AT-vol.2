@@ -24,9 +24,11 @@ symbols:
   - NVDA
   - AMZN
   - TSLA
+  - KTOS
+  - AVAV
   - MU
   - MSTR
-  - CRCL
+  - ORCL
   - SMCI
   - FLY
   - RXRX
@@ -34,8 +36,8 @@ symbols:
 # ===== STRATEGY =====
 strategy:
   # Options: 50/200 (long-term, few signals), 20/50 (medium), 10/30 (active)
-  sma_short: 50
-  sma_long: 200
+  sma_short: 20
+  sma_long: 50
   macd_fast: 12
   macd_slow: 26
   macd_signal: 9
@@ -138,11 +140,11 @@ reconciliation:
 
 # ===== DATABASE =====
 database:
-  path: "data/trading.db"
+  path: "BackEnd/data/trading.db"
   busy_timeout_ms: 5000
   backup_enabled: true
   backup_interval_hours: 24
-  backup_path: "data/backups/"
+  backup_path: "BackEnd/data/backups/"
   keep_backups: 7
 
 # ===== LOGGING =====
@@ -166,8 +168,8 @@ ml:
   ml_weight: 0.5                   # Weight for ML vs TA (0.5 = equal)
   min_training_samples: 100        # Minimum trades before training
   retrain_interval_days: 7         # How often to retrain
-  model_path: "ml/models/confidence_model.pkl"
-  data_path: "ml/training_data"
+  model_path: "BackEnd/ml/models/confidence_model.pkl"
+  data_path: "BackEnd/ml/training_data"
   
   # A/B Testing (compare ML vs non-ML)
   ab_testing: false                # Enable A/B testing mode

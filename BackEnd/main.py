@@ -93,7 +93,7 @@ class USAAutoTrader:
         # Initialize logging first
         trading_logger = init_logging(
             self.config.logging.model_dump(),
-            log_dir="logs"
+            log_dir="BackEnd/logs"
         )
         self.logger = get_logger("trading.main")
         self.logger.info("Logger initialized")

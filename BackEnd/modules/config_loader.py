@@ -149,11 +149,11 @@ class ReconciliationConfig(BaseModel):
 
 
 class DatabaseConfig(BaseModel):
-    path: str = "data/trading.db"
+    path: str = "BackEnd/data/trading.db"
     busy_timeout_ms: int = 5000
     backup_enabled: bool = True
     backup_interval_hours: int = 24
-    backup_path: str = "data/backups/"
+    backup_path: str = "BackEnd/data/backups/"
     keep_backups: int = 7
 
 
@@ -187,8 +187,8 @@ class MLConfig(BaseModel):
     ml_weight: float = 0.5
     min_training_samples: int = 100
     retrain_interval_days: int = 7
-    model_path: str = "ml/models/confidence_model.pkl"
-    data_path: str = "ml/training_data"
+    model_path: str = "BackEnd/ml/models/confidence_model.pkl"
+    data_path: str = "BackEnd/ml/training_data"
     ab_testing: bool = False
     ab_test_ratio: float = 0.5
     model_params: MLModelParams = Field(default_factory=MLModelParams)
@@ -274,8 +274,7 @@ class ConfigLoader:
         possible_paths = [
             "usa_stock_trading_config.yaml",
             "config.yaml",
-            Path(__file__).parent.parent / "usa_stock_trading_config.yaml",
-        ]
+            Path(__file__).parent.parent / "usa_stock_trading_config.yaml"]
         
         for path in possible_paths:
             if Path(path).exists():

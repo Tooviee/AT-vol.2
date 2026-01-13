@@ -41,6 +41,39 @@ venv\Scripts\python.exe check_ml_data.py
 6. Use relative path `venv\Scripts\python.exe` (not `.\venv\...`) after changing to project directory
 7. The `&` operator is REQUIRED in PowerShell to execute files with spaces or special characters in path
 
+## PowerShell Command Chaining
+**CRITICAL**: PowerShell does NOT support `&&` operator. Use PowerShell-compatible syntax for chaining commands.
+
+### Required Pattern for Command Chaining:
+**ALWAYS** use semicolon `;` for sequential commands in PowerShell:
+
+```powershell
+cd "C:\Users\PRO\Desktop\AT vol.2"; mkdir BackEnd
+cd "C:\Users\PRO\Desktop\AT vol.2"; if (-not (Test-Path "BackEnd")) { New-Item -ItemType Directory -Path "BackEnd" }
+```
+
+### Examples:
+✅ CORRECT (PowerShell syntax):
+```powershell
+cd "C:\Users\PRO\Desktop\AT vol.2"; mkdir BackEnd
+cd "C:\Users\PRO\Desktop\AT vol.2"; New-Item -ItemType Directory -Path "BackEnd" -Force
+cd "C:\Users\PRO\Desktop\AT vol.2"; if (Test-Path "file.txt") { Write-Host "Exists" }
+```
+
+❌ WRONG (bash/cmd syntax - will fail in PowerShell):
+```powershell
+cd "C:\Users\PRO\Desktop\AT vol.2" && mkdir BackEnd
+cd "C:\Users\PRO\Desktop\AT vol.2" && python script.py
+```
+
+### Key Rules:
+1. **NEVER** use `&&` in PowerShell - it's not supported
+2. **ALWAYS** use semicolon `;` to chain commands sequentially
+3. For conditional execution, use `if` statements: `if (condition) { command }`
+4. For checking file/directory existence, use `Test-Path`: `if (Test-Path "path") { ... }`
+5. For creating directories, use `mkdir` or `New-Item -ItemType Directory`
+6. Use `-Force` flag with `New-Item` to avoid errors if directory already exists
+
 ## Project Context
 - This is a US stock trading system with ML capabilities
 - Uses virtual environment at `venv/` directory

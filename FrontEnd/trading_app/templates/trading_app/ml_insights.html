@@ -1,0 +1,89 @@
+{% extends 'trading_app/base.html' %}
+
+{% block title %}ML Insights{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header {% if ml_enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                <h5>ML Status</h5>
+            </div>
+            <div class="card-body">
+                <h3>{% if ml_enabled %}Enabled{% else %}Disabled{% endif %}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info">
+                <h5>Model Status</h5>
+            </div>
+            <div class="card-body">
+                <h3>{{ model_status }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-primary">
+                <h5>Recent Trades</h5>
+            </div>
+            <div class="card-body">
+                <h3>{{ recent_trades|length }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5>Recent Trades with ML Data</h5>
+    </div>
+    <div class="card-body">
+        {% if recent_trades %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>ML Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trade in recent_trades|slice:":50" %}
+                        <tr>
+                            <td>{{ trade.executed_at|date:"Y-m-d H:i" }}</td>
+                            <td><strong>{{ trade.symbol }}</strong></td>
+                            <td>
+                                <span class="badge {% if trade.side == 'buy' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ trade.side|upper }}
+                                </span>
+                            </td>
+                            <td>{{ trade.quantity }}</td>
+                            <td>${{ trade.price_usd|floatformat:2 }}</td>
+                            <td>
+                                <span class="badge bg-info">N/A</span>
+                                <small class="text-muted">(ML data not available in database)</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted">No recent trades</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="alert alert-info mt-4">
+    <h6>Note:</h6>
+    <p>ML confidence scores and feature importance data would be displayed here when available in the database. 
+    This requires extending the database schema to store ML model predictions and feature values.</p>
+</div>
+{% endblock %}

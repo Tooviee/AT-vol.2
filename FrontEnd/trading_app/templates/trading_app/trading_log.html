@@ -1,0 +1,95 @@
+{% extends 'trading_app/base.html' %}
+
+{% block title %}Trading Log{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5>Trading Log</h5>
+    </div>
+    <div class="card-body">
+        <!-- Filters -->
+        <form method="get" class="mb-4">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="symbol" class="form-label">Symbol</label>
+                    <select name="symbol" id="symbol" class="form-select">
+                        <option value="">All Symbols</option>
+                        {% for sym in symbols %}
+                            <option value="{{ sym }}" {% if selected_symbol == sym %}selected{% endif %}>{{ sym }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="limit" class="form-label">Limit</label>
+                    <input type="number" name="limit" id="limit" class="form-control" value="{{ limit }}" min="10" max="1000">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{% url 'trading_app:trading_log' %}" class="btn btn-secondary">Reset</a>
+                </div>
+            </div>
+        </form>
+
+        <!-- Trades Table -->
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Symbol</th>
+                        <th>Side</th>
+                        <th>Quantity</th>
+                        <th>Price (USD)</th>
+                        <th>Price (KRW)</th>
+                        <th>Total (USD)</th>
+                        <th>Total (KRW)</th>
+                        <th>Exchange Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if trades %}
+                        {% for trade in trades %}
+                        <tr>
+                            <td>{{ trade.executed_at|date:"Y-m-d H:i:s" }}</td>
+                            <td><strong>{{ trade.symbol }}</strong></td>
+                            <td>
+                                <span class="badge {% if trade.side == 'buy' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ trade.side|upper }}
+                                </span>
+                            </td>
+                            <td>{{ trade.quantity }}</td>
+                            <td>${{ trade.price_usd|floatformat:2 }}</td>
+                            <td>{{ trade.price_krw|floatformat:0 }} KRW</td>
+                            <td>${{ trade.total_usd|floatformat:2 }}</td>
+                            <td>{{ trade.total_krw|floatformat:0 }} KRW</td>
+                            <td>{{ trade.exchange_rate|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">No trades found</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if trades|length >= limit %}
+            <div class="alert alert-info mt-3">
+                Showing first {{ limit }} trades. Use filters to see more.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends 'trading_app/base.html' %}
+
+{% block title %}Risk Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5>Open Positions</h5>
+            </div>
+            <div class="card-body">
+                <h2>{{ position_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info">
+                <h5>Total Exposure</h5>
+            </div>
+            <div class="card-body">
+                <h2>${{ total_positions_value_usd|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header {% if daily_pnl.realized_pnl_krw >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                <h5>Today's P&L</h5>
+            </div>
+            <div class="card-body">
+                <h2>{{ daily_pnl.realized_pnl_krw|default:0|floatformat:0 }} KRW</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Circuit Breaker Events</h5>
+            </div>
+            <div class="card-body">
+                {% if circuit_breaker_events %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Reason</th>
+                                    <th>Losses</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in circuit_breaker_events %}
+                                <tr>
+                                    <td>{{ event.triggered_at|date:"Y-m-d H:i" }}</td>
+                                    <td><span class="badge bg-warning">{{ event.event_type }}</span></td>
+                                    <td>{{ event.reason }}</td>
+                                    <td>{{ event.consecutive_losses }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No circuit breaker events</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Current Positions</h5>
+            </div>
+            <div class="card-body">
+                {% if positions %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Qty</th>
+                                    <th>Value</th>
+                                    <th>P&L</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pos in positions %}
+                                <tr>
+                                    <td><strong>{{ pos.symbol }}</strong></td>
+                                    <td>{{ pos.quantity }}</td>
+                                    <td>${{ pos.current_price_usd|floatformat:2|default:"N/A" }}</td>
+                                    <td class="{% if pos.unrealized_pnl_krw >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ pos.unrealized_pnl_krw|floatformat:0 }} KRW
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No open positions</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -28,24 +28,27 @@ wheels/
 *.egg
 
 # Data files
-data/*.db
-data/*.db-wal
-data/*.db-shm
-data/cache/*.pkl
-data/backups/
+**/data/*.db
+**/data/**/*.db
+**/data/*.db-wal
+**/data/*.db-shm
+**/data/cache/*.pkl
+**/data/backups/
+**/*.sqlite3
+**/*.sqlite
 
 # Machine Learning
-ml/models/*.pkl
-ml/models/*.h5
-ml/models/*.pth
-ml/models/*.pt
-ml/models/*.joblib
-ml/models/*.model
-ml/training_data/
+**/ml/models/*.pkl
+**/ml/models/*.h5
+**/ml/models/*.pth
+**/ml/models/*.pt
+**/ml/models/*.joblib
+**/ml/models/*.model
+**/ml/training_data/
 
 # Logs
-logs/*.log
-logs/*.jsonl
+**/logs/*.log
+**/logs/*.jsonl
 
 # IDE
 .idea/
@@ -74,3 +77,9 @@ htmlcov/
 *.bak
 *~
 
+# txt
+server.txt
+
+# Directories
+Finan_Study/
+Files/

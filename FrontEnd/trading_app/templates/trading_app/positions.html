@@ -1,0 +1,85 @@
+{% extends 'trading_app/base.html' %}
+
+{% block title %}Positions{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Total Positions</h5>
+                <h2 class="card-text">{{ position_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Total Value</h5>
+                <h2 class="card-text">${{ total_value_usd|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white {% if total_unrealized_pnl_krw >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+            <div class="card-body">
+                <h5 class="card-title">Total Unrealized P&L</h5>
+                <h2 class="card-text">
+                    {{ total_unrealized_pnl_krw|floatformat:0 }} KRW
+                </h2>
+                <small>${{ total_unrealized_pnl_usd|floatformat:2 }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5>Current Positions</h5>
+    </div>
+    <div class="card-body">
+        {% if positions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Quantity</th>
+                            <th>Avg Price (USD)</th>
+                            <th>Avg Price (KRW)</th>
+                            <th>Current Price (USD)</th>
+                            <th>Unrealized P&L (USD)</th>
+                            <th>Unrealized P&L (KRW)</th>
+                            <th>Stop Loss</th>
+                            <th>Take Profit</th>
+                            <th>Opened At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pos in positions %}
+                        <tr>
+                            <td><strong>{{ pos.symbol }}</strong></td>
+                            <td>{{ pos.quantity }}</td>
+                            <td>${{ pos.avg_price_usd|floatformat:2 }}</td>
+                            <td>{{ pos.avg_price_krw|floatformat:0 }} KRW</td>
+                            <td>${{ pos.current_price_usd|floatformat:2|default:"N/A" }}</td>
+                            <td class="{% if pos.unrealized_pnl_usd >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ${{ pos.unrealized_pnl_usd|floatformat:2|default:"0.00" }}
+                            </td>
+                            <td class="{% if pos.unrealized_pnl_krw >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {{ pos.unrealized_pnl_krw|floatformat:0|default:"0" }} KRW
+                            </td>
+                            <td>${{ pos.stop_loss|floatformat:2|default:"N/A" }}</td>
+                            <td>${{ pos.take_profit|floatformat:2|default:"N/A" }}</td>
+                            <td>{{ pos.opened_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted text-center">No open positions</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

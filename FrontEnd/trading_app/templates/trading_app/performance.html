@@ -1,0 +1,122 @@
+{% extends 'trading_app/base.html' %}
+
+{% block title %}Performance{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5>Performance Analytics</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="mb-4">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="days" class="form-label">Time Period (Days)</label>
+                    <input type="number" name="days" id="days" class="form-control" value="{{ days }}" min="7" max="365">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary d-block">Update</button>
+                </div>
+            </div>
+        </form>
+
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h6>Total Realized P&L</h6>
+                        <h3>{{ total_realized_pnl|floatformat:0 }} KRW</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h6>Total Trades</h6>
+                        <h3>{{ total_trades }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h6>Win Rate</h6>
+                        <h3>{{ win_rate|floatformat:1 }}%</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-secondary">
+                    <div class="card-body">
+                        <h6>Avg Daily P&L</h6>
+                        <h3>{{ avg_daily_pnl|floatformat:0 }} KRW</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if best_day or worst_day %}
+        <div class="row mb-4">
+            {% if best_day %}
+            <div class="col-md-6">
+                <div class="card border-success">
+                    <div class="card-body">
+                        <h6 class="text-success">Best Day</h6>
+                        <p><strong>Date:</strong> {{ best_day.date|date:"Y-m-d" }}</p>
+                        <p><strong>P&L:</strong> {{ best_day.realized_pnl_krw|floatformat:0 }} KRW</p>
+                        <p><strong>Trades:</strong> {{ best_day.total_trades }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if worst_day %}
+            <div class="col-md-6">
+                <div class="card border-danger">
+                    <div class="card-body">
+                        <h6 class="text-danger">Worst Day</h6>
+                        <p><strong>Date:</strong> {{ worst_day.date|date:"Y-m-d" }}</p>
+                        <p><strong>P&L:</strong> {{ worst_day.realized_pnl_krw|floatformat:0 }} KRW</p>
+                        <p><strong>Trades:</strong> {{ worst_day.total_trades }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Realized P&L (KRW)</th>
+                        <th>Unrealized P&L (KRW)</th>
+                        <th>Total Trades</th>
+                        <th>Win Rate</th>
+                        <th>Ending Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pnl in pnl_history %}
+                    <tr>
+                        <td>{{ pnl.date|date:"Y-m-d" }}</td>
+                        <td class="{% if pnl.realized_pnl_krw >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ pnl.realized_pnl_krw|floatformat:0 }}
+                        </td>
+                        <td>{{ pnl.unrealized_pnl_krw|floatformat:0 }}</td>
+                        <td>{{ pnl.total_trades }}</td>
+                        <td>{{ pnl.win_rate|floatformat:1 }}%</td>
+                        <td>{{ pnl.ending_balance_krw|floatformat:0|default:"N/A" }} KRW</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No data available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

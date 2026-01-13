@@ -1,0 +1,111 @@
+{% extends 'trading_app/base.html' %}
+
+{% block title %}Market Status{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success">
+                <h5>Database Status</h5>
+            </div>
+            <div class="card-body">
+                <h3 class="text-success">{{ database_status }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Today's Summary</h5>
+            </div>
+            <div class="card-body">
+                {% if daily_pnl %}
+                    <p><strong>Trades:</strong> {{ daily_pnl.total_trades }}</p>
+                    <p><strong>P&L:</strong> {{ daily_pnl.realized_pnl_krw|floatformat:0 }} KRW</p>
+                    <p><strong>Win Rate:</strong> {{ daily_pnl.win_rate|floatformat:1 }}%</p>
+                {% else %}
+                    <p class="text-muted">No data for today</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Active Orders</h5>
+            </div>
+            <div class="card-body">
+                {% if active_orders %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th>Qty</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in active_orders %}
+                                <tr>
+                                    <td><strong>{{ order.symbol }}</strong></td>
+                                    <td>{{ order.side|upper }}</td>
+                                    <td>{{ order.quantity }}</td>
+                                    <td><span class="badge bg-warning">{{ order.status }}</span></td>
+                                    <td>{{ order.created_at|date:"H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No active orders</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Orders</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_orders %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th>Qty</th>
+                                    <th>Status</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders|slice:":10" %}
+                                <tr>
+                                    <td><strong>{{ order.symbol }}</strong></td>
+                                    <td>{{ order.side|upper }}</td>
+                                    <td>{{ order.quantity }}</td>
+                                    <td><span class="badge {% if order.status == 'filled' %}bg-success{% elif order.status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">{{ order.status }}</span></td>
+                                    <td>{{ order.created_at|date:"H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No recent orders</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
