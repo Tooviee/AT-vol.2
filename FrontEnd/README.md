@@ -40,7 +40,7 @@ cd "C:\Users\PRO\Desktop\AT vol.2\FrontEnd"
 & "..\venv\Scripts\python.exe" manage.py runserver
 ```
 
-Then open your browser to: http://127.0.0.1:8000
+The server will display the local URL when it starts. Access the dashboard at that address.
 
 ## Features Implemented
 

@@ -1,6 +1,6 @@
-# AI-Powered Algorithmic Trading System (AT vol.2)
+# BackEnd - Trading Engine & ML System
 
-A production-ready, ML-enhanced algorithmic trading system for US stock markets that combines technical analysis with machine learning to generate and execute trading signals autonomously. The system features comprehensive risk management, real-time market monitoring, and both paper trading and live trading capabilities.
+This directory contains the core trading engine, machine learning subsystem, and all backend modules for the AT vol.2 trading system. The backend handles signal generation, order execution, risk management, data persistence, and ML model training.
 
 ## 🚀 Key Features
 
@@ -27,42 +27,55 @@ A production-ready, ML-enhanced algorithmic trading system for US stock markets 
 - **Web Dashboard**: Django-based monitoring dashboard with real-time position tracking
 - **Structured Logging**: JSON logging with rotation and retention policies
 
-## 🏗️ Architecture
+## 🏗️ Backend Architecture
 
-The system is built with a modular architecture consisting of 20+ specialized components:
+The backend is built with a modular architecture consisting of 20+ specialized components:
 
 ```
-AT vol.2/
+BackEnd/
 ├── main.py                    # Main orchestrator and trading loop
 ├── modules/                   # 20+ core trading modules
 │   ├── strategy.py           # Technical analysis engine
+│   ├── ml_strategy.py        # ML-enhanced strategy wrapper
 │   ├── risk_management.py    # Position sizing and risk controls
 │   ├── order_manager.py      # Order state machine
 │   ├── circuit_breaker.py   # Safety mechanisms
-│   └── [15+ more modules]
+│   ├── balance_tracker.py   # Position and cash tracking
+│   ├── paper_trading.py    # Paper trading executor
+│   ├── kis_api_manager.py  # KIS API integration
+│   ├── data_validator.py   # Price data validation
+│   ├── market_hours.py     # Market hours and calendar
+│   ├── timezone_utils.py   # Timezone management
+│   ├── exchange_rate.py    # USD/KRW rate tracking
+│   ├── health_monitor.py   # System health monitoring
+│   ├── network_monitor.py  # Network connectivity checks
+│   ├── notifier.py         # Discord notifications
+│   ├── startup_recovery.py # Startup state recovery
+│   ├── position_reconciler.py # Position reconciliation
+│   └── [more modules...]
 ├── ml/                       # Machine learning subsystem
 │   ├── ml_strategy.py        # ML-enhanced strategy
 │   ├── feature_extractor.py  # 22-feature extraction
 │   ├── confidence_booster.py # LightGBM model
+│   ├── training_data_manager.py # Training data storage
 │   ├── trainer.py            # CLI training tool
 │   └── ab_testing.py         # A/B testing framework
 ├── data_persistence/         # Database layer
-│   ├── database.py           # SQLite with WAL
-│   └── models.py             # SQLAlchemy ORM
-├── dashboard/                # Web interface
-│   └── app.py                # FastAPI application
+│   ├── database.py           # SQLite with WAL mode
+│   └── models.py             # SQLAlchemy ORM models
 └── tests/                    # Comprehensive test suite
 ```
 
-## 🛠️ Technologies
+## 🛠️ Backend Technologies
 
-- **Languages**: Python 3.11+
+- **Language**: Python 3.11+
 - **ML/AI**: LightGBM, scikit-learn, pandas, numpy
-- **Web Framework**: FastAPI, uvicorn
-- **Database**: SQLite with SQLAlchemy ORM
-- **Trading APIs**: KIS API, yfinance
+- **Database**: SQLite with SQLAlchemy ORM (WAL mode)
+- **Trading APIs**: KIS API (live trading), yfinance (market data)
+- **Configuration**: Pydantic models for type-safe config
+- **Logging**: JSON structured logging with rotation
 - **Testing**: pytest
-- **Other**: Pydantic, Discord.py, exchange-calendars
+- **Other**: Discord.py (notifications), exchange-calendars (market hours)
 
 ## 📋 Requirements
 
@@ -105,26 +118,32 @@ pip install -r requirements.txt
 pytest tests/ -v
 ```
 
-### 4. Start Trading
+### 4. Start Trading System
 
 ```bash
 # Paper trading mode (recommended for testing)
 python main.py
 ```
 
+The system will:
+- Load configuration from `usa_stock_trading_config.yaml`
+- Initialize all modules (strategy, risk management, order manager, etc.)
+- Load existing positions from database
+- Start the trading loop
+
 ### 5. Train ML Model (After Collecting Data)
 
 ```bash
-# Analyze collected data
+# Analyze collected training data
 python -m ml.trainer analyze
 
-# Train model (requires 100+ trades)
+# Train model (requires 100+ completed trades)
 python -m ml.trainer train --min-samples 100 --lookback-days 90
 ```
 
-### 6. Access Dashboard
+### 6. Monitor via Web Dashboard
 
-Open `http://127.0.0.1:8000` in your browser (if dashboard is enabled)
+The Django frontend (in `../FrontEnd/`) connects to the same database and provides real-time monitoring. See [FrontEnd/README.md](../FrontEnd/README.md) for setup.
 
 ## 💾 Data Persistence & Recovery
 
@@ -135,11 +154,11 @@ The system automatically handles data persistence:
 - **Startup Recovery**: The system automatically loads all positions, reconciles orders, and restores state on startup.
 - **Database Location**: `BackEnd/data/trading.db` (SQLite with WAL mode for reliability)
 
-## 📚 Documentation
+## 📚 Backend Documentation
 
-- **[PROJECT_DESCRIPTION.md](PROJECT_DESCRIPTION.md)** - Comprehensive project overview and architecture details
-- **[RESUME_DESCRIPTION.md](RESUME_DESCRIPTION.md)** - Resume-ready project descriptions
 - **[TRADING_SYSTEM_PLAN.md](TRADING_SYSTEM_PLAN.md)** - Detailed system architecture and implementation plan
+- **[../README.md](../README.md)** - Project overview and quick start
+- **[../FrontEnd/README.md](../FrontEnd/README.md)** - Frontend dashboard documentation
 
 ## ⚙️ Configuration
 
@@ -193,6 +212,38 @@ Test coverage includes:
 - ML feature extraction
 - ML confidence boosting
 
+## 🔧 Backend Components
+
+### Core Modules
+
+- **`main.py`**: Main orchestrator that coordinates all modules and runs the trading loop
+- **`modules/strategy.py`**: Technical analysis engine (SMA, MACD, RSI, ATR)
+- **`modules/ml_strategy.py`**: ML-enhanced strategy wrapper
+- **`modules/risk_management.py`**: Position sizing, stop-loss, take-profit calculation
+- **`modules/order_manager.py`**: Order state machine with timeout handling
+- **`modules/balance_tracker.py`**: In-memory position and cash tracking
+- **`modules/paper_trading.py`**: Paper trading executor with slippage/spread simulation
+- **`modules/kis_api_manager.py`**: KIS API integration for live trading and market data
+- **`modules/data_validator.py`**: Price data validation and freshness checks
+- **`modules/market_hours.py`**: NYSE market hours with holiday calendar support
+- **`modules/circuit_breaker.py`**: Safety mechanisms to halt trading on losses
+- **`modules/health_monitor.py`**: System heartbeat and health checks
+- **`modules/notifier.py`**: Discord notifications for trades and alerts
+
+### ML Subsystem
+
+- **`ml/ml_strategy.py`**: ML-enhanced strategy that wraps base strategy
+- **`ml/feature_extractor.py`**: Extracts 22 features from price data
+- **`ml/confidence_booster.py`**: LightGBM model for confidence adjustment
+- **`ml/training_data_manager.py`**: Manages training data in JSONL format
+- **`ml/trainer.py`**: CLI tool for training and analyzing ML models
+- **`ml/ab_testing.py`**: A/B testing framework for ML vs. control
+
+### Data Persistence
+
+- **`data_persistence/database.py`**: SQLite database manager with WAL mode
+- **`data_persistence/models.py`**: SQLAlchemy ORM models (Order, Trade, Position, DailyPnL)
+
 ## 📝 Status
 
 **Current Version**: v2 (ML-Enhanced Architecture)
@@ -209,4 +260,8 @@ This software is for educational and research purposes. Trading involves substan
 
 ---
 
-For detailed architecture documentation, see [TRADING_SYSTEM_PLAN.md](TRADING_SYSTEM_PLAN.md)
+## 🔗 Related Documentation
+
+- **[../README.md](../README.md)** - Project overview
+- **[TRADING_SYSTEM_PLAN.md](TRADING_SYSTEM_PLAN.md)** - Detailed architecture plan
+- **[../FrontEnd/README.md](../FrontEnd/README.md)** - Frontend dashboard
