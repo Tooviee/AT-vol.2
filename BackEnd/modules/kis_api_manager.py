@@ -212,6 +212,9 @@ class KISAPIManager:
                     self.logger.warning(f"No historical data for {symbol} after {max_retries} attempts")
                     return None
                 
+                # Clean OHLC data - fix common yfinance data quality issues
+                hist = self._clean_ohlc_data(hist, symbol)
+                
                 return hist
                 
             except Exception as e:
@@ -483,6 +486,61 @@ class KISAPIManager:
             return True
         except Exception:
             return False
+    
+    def _clean_ohlc_data(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
+        """
+        Clean OHLC data to fix common yfinance data quality issues.
+        
+        Fixes:
+        - High < Close or High < Open (sets High = max(High, Close, Open))
+        - Low > Close or Low > Open (sets Low = min(Low, Close, Open))
+        - High < Low (critical error, sets High = max(High, Low, Close, Open), Low = min)
+        
+        Args:
+            df: DataFrame with OHLCV data
+            symbol: Stock symbol (for logging)
+            
+        Returns:
+            Cleaned DataFrame
+        """
+        if df is None or df.empty:
+            return df
+        
+        required_cols = ['Open', 'High', 'Low', 'Close']
+        if not all(col in df.columns for col in required_cols):
+            return df
+        
+        # Create a copy to avoid modifying original
+        cleaned = df.copy()
+        fixed_count = 0
+        
+        # Fix High < Close or High < Open
+        high_issues = (cleaned['High'] < cleaned['Close']) | (cleaned['High'] < cleaned['Open'])
+        if high_issues.any():
+            # Set High to max of High, Close, Open
+            cleaned.loc[high_issues, 'High'] = cleaned.loc[high_issues, ['High', 'Close', 'Open']].max(axis=1)
+            fixed_count += high_issues.sum()
+        
+        # Fix Low > Close or Low > Open
+        low_issues = (cleaned['Low'] > cleaned['Close']) | (cleaned['Low'] > cleaned['Open'])
+        if low_issues.any():
+            # Set Low to min of Low, Close, Open
+            cleaned.loc[low_issues, 'Low'] = cleaned.loc[low_issues, ['Low', 'Close', 'Open']].min(axis=1)
+            fixed_count += low_issues.sum()
+        
+        # Fix High < Low (critical - should never happen)
+        critical_issues = cleaned['High'] < cleaned['Low']
+        if critical_issues.any():
+            # Set High = max(High, Low, Close, Open), Low = min
+            cleaned.loc[critical_issues, 'High'] = cleaned.loc[critical_issues, ['High', 'Low', 'Close', 'Open']].max(axis=1)
+            cleaned.loc[critical_issues, 'Low'] = cleaned.loc[critical_issues, ['High', 'Low', 'Close', 'Open']].min(axis=1)
+            fixed_count += critical_issues.sum()
+            self.logger.warning(f"{symbol}: Fixed {critical_issues.sum()} critical OHLC errors (High < Low)")
+        
+        if fixed_count > 0:
+            self.logger.debug(f"{symbol}: Auto-fixed {fixed_count} OHLC data quality issues from yfinance")
+        
+        return cleaned
     
     def close(self) -> None:
         """Clean up resources"""

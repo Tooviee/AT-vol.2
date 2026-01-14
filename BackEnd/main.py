@@ -247,6 +247,9 @@ class USAAutoTrader:
         
         self.logger.info("Performing startup recovery...")
         
+        # Load positions from database FIRST, before recovery
+        self._load_positions_from_database()
+        
         result = perform_startup_recovery(
             self.order_manager,
             self.position_reconciler,
@@ -300,6 +303,7 @@ class USAAutoTrader:
                     'stop_loss': current_position.stop_loss,
                     'take_profit': current_position.take_profit
                 }
+                self.logger.debug(f"{symbol}: Existing position detected ({current_position.quantity} shares @ ${current_position.avg_price:.2f})")
             
             # Generate signal (ML-enhanced if enabled)
             signal = self.strategy.generate_signal(hist_data, symbol, position_dict)
@@ -321,6 +325,7 @@ class USAAutoTrader:
                     self.logger.debug(f"{symbol}: Signal filtered - {exec_reason}")
             
             # Execute if we have a trading signal and ML approves
+            # IMPORTANT: Only buy if we don't already have a position
             if signal.signal == Signal.BUY and current_position is None and should_execute:
                 self._execute_buy(symbol, signal)
             elif signal.signal == Signal.SELL and current_position is not None:
@@ -380,9 +385,31 @@ class USAAutoTrader:
                 f"(SL: ${signal.stop_loss:.2f}, TP: ${signal.take_profit:.2f})"
             )
             
+            # Save position to database if order was filled
+            # Check order status (OrderState.FILLED enum has value 'filled')
+            order_filled = (hasattr(order.status, 'value') and order.status.value == 'filled') or (str(order.status) == "OrderState.FILLED")
+            if order_filled and order.avg_fill_price and self.database:
+                try:
+                    position = self.balance_tracker.get_position(symbol)
+                    if position:
+                        self.database.save_position(
+                            symbol=symbol,
+                            quantity=position.quantity,
+                            avg_price=position.avg_price,
+                            exchange_rate=exchange_rate,
+                            stop_loss=position.stop_loss,
+                            take_profit=position.take_profit,
+                            current_price_usd=position.current_price,
+                            is_paper=(self.config.mode == 'paper')
+                        )
+                    else:
+                        self.logger.warning(f"Position {symbol} not found in balance_tracker after order fill")
+                except Exception as e:
+                    self.logger.error(f"Failed to save position {symbol} to database: {e}", exc_info=True)
+            
             # Record trade for ML training (if ML strategy)
             if hasattr(self.strategy, 'record_trade_start') and hasattr(signal, 'ml_features'):
-                self.strategy.record_trade_start(order.order_id, signal)
+                self.strategy.record_trade_start(order.id, signal)
             
             # Record trade in health monitor
             self.health_monitor.record_trade()
@@ -403,6 +430,30 @@ class USAAutoTrader:
             )
             
             self.order_manager.submit_order(order)
+            
+            # Update/delete position in database if order was filled
+            if order.status.value == 'filled' and order.avg_fill_price and self.database:
+                try:
+                    # Check if position still exists (might be closed)
+                    remaining_position = self.balance_tracker.get_position(symbol)
+                    if remaining_position and remaining_position.quantity > 0:
+                        # Position partially closed, update it
+                        exchange_rate = self.exchange_rate_tracker.get_rate()
+                        self.database.save_position(
+                            symbol=symbol,
+                            quantity=remaining_position.quantity,
+                            avg_price=remaining_position.avg_price,
+                            exchange_rate=exchange_rate,
+                            stop_loss=remaining_position.stop_loss,
+                            take_profit=remaining_position.take_profit,
+                            current_price_usd=remaining_position.current_price,
+                            is_paper=(self.config.mode == 'paper')
+                        )
+                    else:
+                        # Position fully closed, delete it
+                        self.database.delete_position(symbol)
+                except Exception as e:
+                    self.logger.warning(f"Failed to update position in database: {e}")
             
             # Calculate P&L
             if order.status.value == 'filled' and order.avg_fill_price:
@@ -427,6 +478,95 @@ class USAAutoTrader:
         except Exception as e:
             self.logger.error(f"Failed to execute sell for {symbol}: {e}")
     
+    def _load_positions_from_database(self) -> None:
+        """Load positions from database into balance_tracker on startup"""
+        if not self.database:
+            return
+        
+        try:
+            db_positions = self.database.get_positions()
+            if not db_positions:
+                self.logger.debug("No positions found in database to load")
+                return
+            
+            self.logger.info(f"Loading {len(db_positions)} positions from database...")
+            for symbol, pos_data in db_positions.items():
+                try:
+                    quantity = pos_data.get('quantity', 0)
+                    avg_price = pos_data.get('avg_price_usd', 0) or pos_data.get('avg_price', 0)
+                    
+                    if quantity > 0 and avg_price > 0:
+                        # Check if position already exists (avoid duplicates from multiple loads)
+                        existing = self.balance_tracker.get_position(symbol)
+                        if existing:
+                            self.logger.debug(f"Position {symbol} already in balance_tracker ({existing.quantity} shares), skipping duplicate load")
+                        else:
+                            # Add position to balance_tracker
+                            self.balance_tracker.add_position(
+                                symbol=symbol,
+                                quantity=quantity,
+                                price=avg_price,
+                                stop_loss=pos_data.get('stop_loss'),
+                                take_profit=pos_data.get('take_profit')
+                            )
+                            self.logger.info(f"Loaded position: {symbol} {quantity} @ ${avg_price:.2f}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to load position {symbol}: {e}")
+        except Exception as e:
+            self.logger.warning(f"Failed to load positions from database: {e}")
+    
+    def _update_position_prices(self) -> None:
+        """Update current prices for all positions"""
+        all_positions = self.balance_tracker.get_all_positions()
+        if not all_positions:
+            return
+        
+        symbols = list(all_positions.keys())
+        self.logger.debug(f"Updating prices for {len(symbols)} positions: {', '.join(symbols)}")
+        
+        # Fetch prices for all positions
+        price_updates = {}
+        for symbol in symbols:
+            try:
+                price_data = self.kis_api.get_price(symbol)
+                if price_data and 'close' in price_data:
+                    price_updates[symbol] = price_data['close']
+                else:
+                    self.logger.debug(f"No price data for {symbol}")
+            except Exception as e:
+                self.logger.warning(f"Failed to fetch price for {symbol}: {e}")
+        
+        # Update positions with new prices
+        if price_updates:
+            self.balance_tracker.update_prices(price_updates)
+            self.logger.debug(f"Updated prices for {len(price_updates)} positions")
+    
+    def _sync_positions_to_database(self) -> None:
+        """Sync all positions from balance_tracker to database"""
+        if not self.database:
+            return
+        
+        try:
+            exchange_rate = self.exchange_rate_tracker.get_rate()
+            all_positions = self.balance_tracker.get_all_positions()
+            
+            for symbol, position in all_positions.items():
+                try:
+                    self.database.save_position(
+                        symbol=symbol,
+                        quantity=position.quantity,
+                        avg_price=position.avg_price,
+                        exchange_rate=exchange_rate,
+                        stop_loss=position.stop_loss,
+                        take_profit=position.take_profit,
+                        current_price_usd=position.current_price,
+                        is_paper=(self.config.mode == 'paper')
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Failed to sync position {symbol}: {e}")
+        except Exception as e:
+            self.logger.warning(f"Failed to sync positions to database: {e}")
+    
     def run_trading_loop(self) -> None:
         """Main trading loop"""
         self.logger.info(f"Starting trading loop in {self.config.mode} mode")
@@ -435,12 +575,30 @@ class USAAutoTrader:
         # Send startup notification
         self.notifier.send_startup_alert(self.config.mode)
         
+        # Note: Positions are already loaded in startup_recovery(), no need to load again
+        # Sync any in-memory positions to database (in case of discrepancies)
+        self._sync_positions_to_database()
+        
         self.is_running = True
+        last_position_sync = time.time()
+        last_price_update = time.time()
+        position_sync_interval = 60  # Sync every 60 seconds
+        price_update_interval = 60  # Update prices every 60 seconds
         
         while self.is_running and not should_stop():
             try:
                 # Update heartbeat
                 self.health_monitor.pulse()
+                
+                # Periodically update position prices
+                if time.time() - last_price_update >= price_update_interval:
+                    self._update_position_prices()
+                    last_price_update = time.time()
+                
+                # Periodically sync positions to database
+                if time.time() - last_position_sync >= position_sync_interval:
+                    self._sync_positions_to_database()
+                    last_position_sync = time.time()
                 
                 # Check network
                 if self.network_monitor.should_pause_trading():

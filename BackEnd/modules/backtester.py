@@ -59,7 +59,7 @@ class Backtester:
                  initial_balance: float = 10000000,  # 10M KRW
                  risk_per_trade_percent: float = 1.0,
                  max_position_size_percent: float = 10.0,
-                 exchange_rate: float = 1350.0,
+                 exchange_rate: float = 1450.0,
                  logger: Optional[logging.Logger] = None):
         """
         Initialize backtester.

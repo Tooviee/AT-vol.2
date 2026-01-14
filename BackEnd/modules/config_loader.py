@@ -134,7 +134,7 @@ class PaperTradingConfig(BaseModel):
 
 class ExchangeRateConfig(BaseModel):
     update_interval_minutes: int = 60
-    fallback_rate: float = 1350.0
+    fallback_rate: float = 1450.0
 
 
 class DataValidationConfig(BaseModel):

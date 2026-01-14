@@ -257,18 +257,35 @@ class OrderManager:
                 self.database.update_order(order)
             
         except Exception as e:
-            order.transition_to(OrderState.REJECTED, str(e))
-            self.logger.error(f"Order rejected: {order.id} - {e}")
-            
-            if self.database:
-                self.database.update_order(order)
-            
-            if self.notifier:
+            # Only reject if order is not already in a terminal state
+            # (e.g., if order was filled but database update failed)
+            if not order.is_terminal:
                 try:
-                    self.notifier.send_order_rejected_notification(order, str(e))
-                except Exception:
-                    pass
+                    order.transition_to(OrderState.REJECTED, str(e))
+                    self.logger.error(f"Order rejected: {order.id} - {e}")
+                    
+                    if self.database:
+                        self.database.update_order(order)
+                    
+                    if self.notifier:
+                        try:
+                            self.notifier.send_order_rejected_notification(order, str(e))
+                        except Exception:
+                            pass
+                except InvalidStateTransition:
+                    # Order is already in terminal state (e.g., FILLED)
+                    # Log the error but don't try to change state
+                    self.logger.warning(
+                        f"Exception after order {order.id} reached terminal state "
+                        f"({order.status.value}): {e}"
+                    )
+            else:
+                # Order already in terminal state, just log the error
+                self.logger.warning(
+                    f"Exception after order {order.id} was {order.status.value}: {e}"
+                )
             
+            # Re-raise the exception so caller knows something went wrong
             raise
     
     def cancel_order(self, order_id: str, reason: str = "User requested") -> bool:

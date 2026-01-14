@@ -87,7 +87,7 @@ class Trade(Base):
     quantity = Column(Integer, nullable=False)
     price_usd = Column(Float, nullable=False)
     price_krw = Column(Float, nullable=False)
-    exchange_rate = Column(Float, nullable=False, default=1350.0)
+    exchange_rate = Column(Float, nullable=False, default=1450.0)
     
     # Calculated fields
     total_usd = Column(Float, nullable=False)

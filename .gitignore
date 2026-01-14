@@ -80,6 +80,14 @@ htmlcov/
 # txt
 server.txt
 
+# Diagnostic/Temporary Scripts (keep locally, don't commit)
+BackEnd/check_*.py
+BackEnd/diagnose_*.py
+BackEnd/test_position_*.py
+BackEnd/DIAGNOSTIC_*.md
+BackEnd/PATH_FIXES_*.md
+FrontEnd/test_*.py
+
 # Directories
 Finan_Study/
 Files/

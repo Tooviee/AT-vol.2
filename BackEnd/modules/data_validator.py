@@ -117,9 +117,10 @@ class DataValidator:
         try:
             if all(col in df.columns for col in ['High', 'Low', 'Open', 'Close']):
                 issues = []
+                warnings = []
                 bad_dates = []
                 
-                # Check High >= Low
+                # CRITICAL: Check High >= Low (should never happen, indicates bad data)
                 high_low_issue = df['High'] < df['Low']
                 if high_low_issue.any():
                     bad_rows = df[high_low_issue]
@@ -130,7 +131,7 @@ class DataValidator:
                     issues.append(f"High<Low on {high_low_issue.sum()} date(s)")
                     bad_dates.extend(dates[:3])
                 
-                # Check High >= Close
+                # MINOR: Check High >= Close (common yfinance issue, auto-fixed by data cleaning)
                 high_close_issue = df['High'] < df['Close']
                 if high_close_issue.any():
                     bad_rows = df[high_close_issue]
@@ -138,10 +139,11 @@ class DataValidator:
                         dates = bad_rows.index.strftime('%Y-%m-%d').tolist()
                     else:
                         dates = [str(d) for d in bad_rows.index]
-                    issues.append(f"High<Close on {high_close_issue.sum()} date(s)")
-                    bad_dates.extend(dates[:3])
+                    warnings.append(f"High<Close on {high_close_issue.sum()} date(s)")
+                    # Log warning but don't fail
+                    self.logger.debug(f"{symbol}: Minor OHLC inconsistency (High<Close) on {dates[0] if dates else 'unknown'} - should be auto-fixed")
                 
-                # Check High >= Open
+                # MINOR: Check High >= Open (common yfinance issue, auto-fixed by data cleaning)
                 high_open_issue = df['High'] < df['Open']
                 if high_open_issue.any():
                     bad_rows = df[high_open_issue]
@@ -149,12 +151,18 @@ class DataValidator:
                         dates = bad_rows.index.strftime('%Y-%m-%d').tolist()
                     else:
                         dates = [str(d) for d in bad_rows.index]
-                    issues.append(f"High<Open on {high_open_issue.sum()} date(s)")
-                    bad_dates.extend(dates[:3])
+                    warnings.append(f"High<Open on {high_open_issue.sum()} date(s)")
+                    # Log warning but don't fail
+                    self.logger.debug(f"{symbol}: Minor OHLC inconsistency (High<Open) on {dates[0] if dates else 'unknown'} - should be auto-fixed")
                 
+                # Only fail on critical errors (High < Low)
                 if issues:
                     unique_dates = ', '.join(sorted(set(bad_dates))[:3])
-                    return False, f"{symbol}: OHLC values inconsistent - {'; '.join(issues)} on {unique_dates}"
+                    return False, f"{symbol}: Critical OHLC error - {'; '.join(issues)} on {unique_dates}"
+                
+                # Log warnings for minor issues (these should be auto-fixed by data cleaning)
+                if warnings:
+                    self.logger.debug(f"{symbol}: Minor OHLC inconsistencies detected (should be auto-fixed): {'; '.join(warnings)}")
         except Exception as e:
             self.logger.warning(f"Could not check OHLC consistency for {symbol}: {e}")
         

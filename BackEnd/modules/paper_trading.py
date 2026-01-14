@@ -232,13 +232,21 @@ class PaperTradingExecutor:
         # Save to database if available
         if self.database:
             try:
+                # Get exchange rate from balance tracker if available
+                exchange_rate = 1450.0  # Default fallback
+                if hasattr(self.balance_tracker, 'get_exchange_rate'):
+                    exchange_rate = self.balance_tracker.get_exchange_rate()
+                
                 self.database.save_trade(
                     order_id=order_id,
                     symbol=symbol,
                     side=side,
                     quantity=filled_qty,
                     price=fill_price,
-                    is_paper=True
+                    is_paper=True,
+                    exchange_rate=exchange_rate,
+                    slippage=slippage_adj,
+                    spread=spread_adj
                 )
             except Exception as e:
                 self.logger.warning(f"Failed to save trade to database: {e}")

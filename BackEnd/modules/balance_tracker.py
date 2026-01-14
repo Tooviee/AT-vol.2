@@ -73,7 +73,7 @@ class BalanceTracker:
         initial_balance_krw = paper_config.get('initial_balance_krw', 10000000)
         
         # Convert to USD for internal tracking (approximate)
-        fallback_rate = config.get('exchange_rate', {}).get('fallback_rate', 1350.0)
+        fallback_rate = config.get('exchange_rate', {}).get('fallback_rate', 1450.0)
         self._cash_usd = initial_balance_krw / fallback_rate if self.is_paper else 0.0
         
         # Positions
@@ -89,7 +89,7 @@ class BalanceTracker:
         """Get current USD/KRW exchange rate"""
         if self.exchange_rate_tracker:
             return self.exchange_rate_tracker.get_rate()
-        return self.config.get('exchange_rate', {}).get('fallback_rate', 1350.0)
+        return self.config.get('exchange_rate', {}).get('fallback_rate', 1450.0)
     
     def get_total_balance(self) -> float:
         """Get total balance in KRW"""

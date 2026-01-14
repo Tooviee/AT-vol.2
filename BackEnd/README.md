@@ -22,7 +22,9 @@ A production-ready, ML-enhanced algorithmic trading system for US stock markets 
 
 ### Infrastructure
 - **Data Persistence**: SQLite with WAL mode, automated backups, comprehensive trade tracking
-- **Web Dashboard**: FastAPI-based monitoring dashboard with real-time status
+- **Position Persistence**: Automatic position loading on startup and periodic syncing to database
+- **Real-time Price Updates**: Automatic position price updates every 60 seconds (via yfinance)
+- **Web Dashboard**: Django-based monitoring dashboard with real-time position tracking
 - **Structured Logging**: JSON logging with rotation and retention policies
 
 ## 🏗️ Architecture
@@ -124,6 +126,15 @@ python -m ml.trainer train --min-samples 100 --lookback-days 90
 
 Open `http://127.0.0.1:8000` in your browser (if dashboard is enabled)
 
+## 💾 Data Persistence & Recovery
+
+The system automatically handles data persistence:
+
+- **Position Persistence**: All positions are saved to the database immediately when trades execute and synced every 60 seconds. On restart, positions are automatically loaded from the database.
+- **Price Updates**: Position prices are automatically updated every 60 seconds from market data (yfinance). Note: yfinance free tier has a 15-20 minute delay.
+- **Startup Recovery**: The system automatically loads all positions, reconciles orders, and restores state on startup.
+- **Database Location**: `BackEnd/data/trading.db` (SQLite with WAL mode for reliability)
+
 ## 📚 Documentation
 
 - **[PROJECT_DESCRIPTION.md](PROJECT_DESCRIPTION.md)** - Comprehensive project overview and architecture details
@@ -149,6 +160,7 @@ The system is configured via `usa_stock_trading_config.yaml`. Key sections inclu
 - **Data Validation**: Price anomaly detection and freshness checks
 - **Health Monitoring**: System heartbeat and network connectivity monitoring
 - **Graceful Shutdown**: State preservation and recovery mechanisms
+- **Position Persistence**: All positions are automatically saved to database and restored on restart
 
 ## 📊 ML Model Details
 

@@ -38,7 +38,7 @@ class ExchangeRateTracker:
         self.update_interval = timedelta(
             minutes=config.get('update_interval_minutes', 60)
         )
-        self.fallback_rate = config.get('fallback_rate', 1350.0)
+        self.fallback_rate = config.get('fallback_rate', 1450.0)
         
         self._current_rate: Optional[ExchangeRate] = None
         self._last_update: Optional[datetime] = None
@@ -183,13 +183,13 @@ def get_exchange_rate() -> float:
     """Get current exchange rate"""
     if _exchange_rate_tracker:
         return _exchange_rate_tracker.get_rate()
-    return 1350.0  # Fallback
+    return 1450.0  # Fallback
 
 
 def usd_to_krw(usd_amount: float) -> float:
     """Convert USD to KRW"""
     if _exchange_rate_tracker:
         return _exchange_rate_tracker.usd_to_krw(usd_amount)
-    return usd_amount * 1350.0
+    return usd_amount * 1450.0
 
 

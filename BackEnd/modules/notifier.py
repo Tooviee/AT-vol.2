@@ -86,7 +86,7 @@ class Notifier:
         try:
             order_value = order.quantity * getattr(order, 'avg_fill_price', 0) or 0
             # Convert to KRW (approximate)
-            order_value_krw = order_value * 1350
+            order_value_krw = order_value * 1450
             return order_value_krw >= self.large_order_threshold
         except Exception:
             return False

@@ -29,9 +29,9 @@ symbols:
   - MU
   - MSTR
   - ORCL
-  - SMCI
-  - FLY
-  - RXRX
+  - SMR
+  - NBIS
+  - REMX
 
 # ===== STRATEGY =====
 strategy:

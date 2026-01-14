@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session, Session
 
 from .models import (
     Base, Order, Trade, Position, DailyPnL, 
-    SystemState, CircuitBreakerEvent, OrderStatus, TradeSide
+    SystemState, CircuitBreakerEvent, OrderStatus, TradeSide, OrderType
 )
 
 
@@ -111,13 +111,29 @@ class Database:
                 db_order.submitted_at = getattr(order, 'submitted_at', None)
                 db_order.filled_at = getattr(order, 'filled_at', None)
                 db_order.reason = getattr(order, 'reason', None)
+                # Update order_type if changed
+                order_type_str = getattr(order, 'order_type', None)
+                if order_type_str:
+                    if isinstance(order_type_str, str):
+                        order_type_enum = OrderType.MARKET if order_type_str.lower() == 'market' else OrderType.LIMIT
+                        db_order.order_type = order_type_enum
+                    else:
+                        db_order.order_type = order_type_str
             else:
                 # Create new
+                # Convert order_type string to enum
+                order_type_str = getattr(order, 'order_type', 'market')
+                if isinstance(order_type_str, str):
+                    # Convert lowercase string to enum
+                    order_type_enum = OrderType.MARKET if order_type_str.lower() == 'market' else OrderType.LIMIT
+                else:
+                    order_type_enum = order_type_str  # Already an enum
+                
                 db_order = Order(
                     id=order.id,
                     symbol=order.symbol,
                     side=TradeSide(order.side),
-                    order_type=order.order_type if hasattr(order, 'order_type') else 'market',
+                    order_type=order_type_enum,
                     quantity=order.quantity,
                     limit_price=getattr(order, 'limit_price', None),
                     stop_loss=getattr(order, 'stop_loss', None),
@@ -153,7 +169,7 @@ class Database:
     
     def save_trade(self, order_id: str, symbol: str, side: str,
                    quantity: int, price: float, is_paper: bool = True,
-                   exchange_rate: float = 1350.0,
+                   exchange_rate: float = 1450.0,
                    slippage: float = 0, spread: float = 0) -> Trade:
         """Save a trade execution"""
         with self.session_scope() as session:
@@ -199,12 +215,13 @@ class Database:
     # === Position Operations ===
     
     def save_position(self, symbol: str, quantity: int, avg_price: float,
-                      exchange_rate: float = 1350.0, **kwargs) -> None:
+                      exchange_rate: float = 1450.0, **kwargs) -> None:
         """Save or update a position"""
         with self.session_scope() as session:
             position = session.query(Position).filter(Position.symbol == symbol).first()
             
             if position:
+                # Update existing position
                 position.quantity = quantity
                 position.avg_price_usd = avg_price
                 position.avg_price_krw = avg_price * exchange_rate
@@ -212,6 +229,7 @@ class Database:
                     if hasattr(position, key):
                         setattr(position, key, value)
             else:
+                # Create new position
                 position = Position(
                     symbol=symbol,
                     quantity=quantity,
@@ -220,6 +238,9 @@ class Database:
                     **{k: v for k, v in kwargs.items() if hasattr(Position, k)}
                 )
                 session.add(position)
+            
+            # Explicitly flush to ensure it's written
+            session.flush()
     
     def update_position(self, symbol: str, quantity: int) -> None:
         """Update position quantity"""
@@ -237,9 +258,13 @@ class Database:
             return {
                 pos.symbol: {
                     'quantity': pos.quantity,
-                    'avg_price': pos.avg_price_usd,
-                    'current_price': pos.current_price_usd,
-                    'unrealized_pnl': pos.unrealized_pnl_usd
+                    'avg_price_usd': pos.avg_price_usd,
+                    'avg_price': pos.avg_price_usd,  # Alias for compatibility
+                    'current_price_usd': pos.current_price_usd,
+                    'current_price': pos.current_price_usd,  # Alias for compatibility
+                    'unrealized_pnl_usd': pos.unrealized_pnl_usd,
+                    'stop_loss': pos.stop_loss,
+                    'take_profit': pos.take_profit
                 }
                 for pos in positions
             }
@@ -260,23 +285,39 @@ class Database:
             daily = DailyPnL(date=today, is_paper=trade.is_paper)
             session.add(daily)
         
+        # Handle None values (from old database records)
+        if daily.total_trades is None:
+            daily.total_trades = 0
         daily.total_trades += 1
         
         if trade.side == TradeSide.BUY:
+            if daily.buy_volume_usd is None:
+                daily.buy_volume_usd = 0
             daily.buy_volume_usd += trade.total_usd
         else:
+            if daily.sell_volume_usd is None:
+                daily.sell_volume_usd = 0
             daily.sell_volume_usd += trade.total_usd
     
     def get_daily_pnl(self, target_date: Optional[date] = None) -> Optional[DailyPnL]:
         """Get daily P&L for a date"""
         with self.session_scope() as session:
             target = target_date or date.today()
-            return session.query(DailyPnL).filter(DailyPnL.date == target).first()
+            daily = session.query(DailyPnL).filter(DailyPnL.date == target).first()
+            if daily:
+                # Access all properties within session to avoid lazy loading issues
+                # Force evaluation of win_rate property
+                _ = daily.win_rate
+                # Expunge from session so it can be used outside
+                session.expunge(daily)
+            return daily
     
     def get_realized_pnl_today(self) -> float:
         """Get today's realized P&L in KRW"""
-        daily = self.get_daily_pnl()
-        return daily.realized_pnl_krw if daily else 0.0
+        with self.session_scope() as session:
+            today = date.today()
+            daily = session.query(DailyPnL).filter(DailyPnL.date == today).first()
+            return daily.realized_pnl_krw if daily else 0.0
     
     def update_daily_pnl(self, realized_pnl_krw: float = None,
                          unrealized_pnl_krw: float = None,
