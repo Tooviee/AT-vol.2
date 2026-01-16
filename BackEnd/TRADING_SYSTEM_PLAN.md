@@ -1,4 +1,4 @@
-# AI-Powered Auto Trading System - Final Architecture v7
+# AI-Powered Auto Trading System - Final Architecture
 
 ## Overview
 
@@ -608,57 +608,6 @@ python -m ml.trainer train
 # 7. View dashboard
 # Open http://127.0.0.1:8000
 ```
-
----
-
-## Changelog
-
-### v7 (Current)
-- Added ML confidence boosting with LightGBM
-- Added feature extraction (22 features)
-- Added training data collection
-- Added A/B testing capability
-- Added ML trainer CLI tool
-- Updated main.py for ML integration
-- Updated config with ML section
-
-### v6
-- Paper trading market price fetching fix
-- Timezone utils with exchange-calendars
-- Order manager notifier integration
-- Order timeout mechanism
-- SQLite WAL mode
-- KIS token refresh
-- ATR calculation in strategy
-- Circuit breaker loss type config
-- Database backup config
-- Pre/post market hours config
-
-### v5
-- Position reconciliation
-- Startup recovery
-- Network monitoring
-- Enhanced data validation
-
-### v4
-- Discord bot with confirmations
-- Health monitoring
-- Rate limiting
-
-### v3
-- Circuit breaker
-- Market hours management
-- Exchange rate tracking
-
-### v2
-- Paper trading simulation
-- Risk management
-- Order state machine
-
-### v1
-- Core trading logic
-- KIS API integration
-- Basic strategy
 
 ---
 
