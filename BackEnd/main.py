@@ -107,9 +107,16 @@ class USAAutoTrader:
             self.logger
         )
         
-        # Initialize database
+        # Initialize database (normalize path so running from BackEnd/ or repo root uses the same DB)
+        db_path_cfg = Path(self.config.database.path)
+        if not db_path_cfg.is_absolute():
+            repo_root = PROJECT_ROOT.parent  # repo root (one level above BackEnd)
+            db_path = (repo_root / db_path_cfg).resolve()
+        else:
+            db_path = db_path_cfg
+        
         self.database = Database(
-            self.config.database.path,
+            str(db_path),
             self.config.database.model_dump(),
             self.logger
         )
@@ -495,11 +502,30 @@ class USAAutoTrader:
                     quantity = pos_data.get('quantity', 0)
                     avg_price = pos_data.get('avg_price_usd', 0) or pos_data.get('avg_price', 0)
                     
+                    # Log the raw value coming from the database to avoid confusion
+                    self.logger.info(f"DB position -> {symbol}: {quantity} @ ${avg_price:.2f}")
+                    
                     if quantity > 0 and avg_price > 0:
                         # Check if position already exists (avoid duplicates from multiple loads)
                         existing = self.balance_tracker.get_position(symbol)
                         if existing:
-                            self.logger.debug(f"Position {symbol} already in balance_tracker ({existing.quantity} shares), skipping duplicate load")
+                            # If position exists but quantity differs, update it to match database
+                            if existing.quantity != quantity:
+                                self.logger.warning(
+                                    f"Position {symbol} quantity mismatch: "
+                                    f"balance_tracker={existing.quantity}, database={quantity}. "
+                                    f"Updating to match database."
+                                )
+                                # Update existing position to match database
+                                existing.quantity = quantity
+                                existing.avg_price = avg_price
+                                if pos_data.get('stop_loss'):
+                                    existing.stop_loss = pos_data.get('stop_loss')
+                                if pos_data.get('take_profit'):
+                                    existing.take_profit = pos_data.get('take_profit')
+                                self.logger.info(f"Updated position: {symbol} {quantity} @ ${avg_price:.2f}")
+                            else:
+                                self.logger.debug(f"Position {symbol} already in balance_tracker ({existing.quantity} shares), skipping duplicate load")
                         else:
                             # Add position to balance_tracker
                             self.balance_tracker.add_position(
