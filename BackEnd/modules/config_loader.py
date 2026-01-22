@@ -142,6 +142,15 @@ class DataValidationConfig(BaseModel):
     max_daily_change_percent: float = 50.0
 
 
+class DataCacheConfig(BaseModel):
+    """Caching configuration for price/history data"""
+    historical_cache_enabled: bool = True
+    historical_cache_ttl_hours: int = 24
+    disk_cache_enabled: bool = True
+    historical_cache_path: str = "BackEnd/data/hist_cache"
+    return_copy: bool = True  # prevent callers from mutating cached DataFrames
+
+
 class ReconciliationConfig(BaseModel):
     run_on_startup: bool = True
     run_interval_minutes: int = 30
@@ -243,6 +252,7 @@ class TradingConfig(BaseModel):
     paper_trading: PaperTradingConfig = Field(default_factory=PaperTradingConfig)
     exchange_rate: ExchangeRateConfig = Field(default_factory=ExchangeRateConfig)
     data_validation: DataValidationConfig = Field(default_factory=DataValidationConfig)
+    data_cache: DataCacheConfig = Field(default_factory=DataCacheConfig)
     reconciliation: ReconciliationConfig = Field(default_factory=ReconciliationConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)

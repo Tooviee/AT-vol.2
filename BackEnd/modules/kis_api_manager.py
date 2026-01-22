@@ -4,9 +4,12 @@ Provides methods for getting prices, placing orders, and managing positions.
 """
 
 import logging
+import os
 import time
 import random
-from typing import Dict, Any, Optional, List
+import threading
+from pathlib import Path
+from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime, timedelta
 import requests
 import pandas as pd
@@ -45,6 +48,20 @@ class KISAPIManager:
         """
         self.logger = logger or logging.getLogger(__name__)
         self.config = config
+        self.cache_cfg = config.get('data_cache', {})
+        self.historical_cache_enabled = self.cache_cfg.get('historical_cache_enabled', True)
+        self.disk_cache_enabled = self.cache_cfg.get('disk_cache_enabled', True)
+        self.cache_ttl = timedelta(hours=self.cache_cfg.get('historical_cache_ttl_hours', 24))
+        self.cache_path = Path(self.cache_cfg.get('historical_cache_path', "BackEnd/data/hist_cache"))
+        self.return_copy = self.cache_cfg.get('return_copy', True)
+        self.hist_cache: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
+        self.cache_lock = threading.RLock()
+        if self.disk_cache_enabled:
+            try:
+                self.cache_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                self.logger.warning(f"Could not create cache directory {self.cache_path}: {e}")
+                self.disk_cache_enabled = False
         
         # Initialize authentication
         kis_config = config.get('kis', {})
@@ -55,6 +72,78 @@ class KISAPIManager:
         self.auth.set_virtual_mode(is_paper)
         
         self.base_url = self.auth.base_url
+    
+    def _cache_key(self, symbol: str, period: str, interval: str) -> Tuple[str, str, str]:
+        return (symbol, period, interval)
+    
+    def _get_cached_history(self, key: Tuple[str, str, str]) -> Optional[pd.DataFrame]:
+        """Return cached history if fresh; otherwise None."""
+        if not self.historical_cache_enabled:
+            return None
+        
+        now = datetime.utcnow()
+        with self.cache_lock:
+            entry = self.hist_cache.get(key)
+            if not entry:
+                return None
+            fetched_at: datetime = entry.get('fetched_at')
+            if not fetched_at or now - fetched_at >= self.cache_ttl:
+                self.logger.debug(f"Historical cache TTL expired for {key}")
+                return None
+            self.logger.debug(f"Historical cache hit for {key}")
+            df = entry.get('data')
+            if df is None:
+                return None
+            return df.copy(deep=True) if self.return_copy else df
+    
+    def _load_disk_cache(self, key: Tuple[str, str, str]) -> Optional[pd.DataFrame]:
+        """Load cached history from disk if enabled, fresh, and readable."""
+        if not self.disk_cache_enabled:
+            return None
+        
+        symbol, period, interval = key
+        filename = f"{symbol}__{period}__{interval}.parquet"
+        path = self.cache_path / filename
+        if not path.exists():
+            return None
+        
+        now = datetime.utcnow()
+        fetched_at = datetime.utcfromtimestamp(path.stat().st_mtime)
+        if now - fetched_at >= self.cache_ttl:
+            self.logger.debug(f"Disk cache TTL expired for {key}")
+            return None
+        
+        try:
+            df = pd.read_parquet(path)
+            if df is None or df.empty:
+                self.logger.debug(f"Disk cache empty for {key}")
+                return None
+            df = df.sort_index()
+            with self.cache_lock:
+                self.hist_cache[key] = {"data": df, "fetched_at": fetched_at}
+            self.logger.debug(f"Loaded historical data from disk cache for {key}")
+            return df.copy(deep=True) if self.return_copy else df
+        except Exception as e:
+            self.logger.warning(f"Failed to read disk cache for {key}: {e}")
+            try:
+                path.unlink(missing_ok=True)
+            except Exception:
+                pass
+            return None
+    
+    def _save_disk_cache(self, key: Tuple[str, str, str], df: pd.DataFrame, fetched_at: datetime) -> None:
+        if not self.disk_cache_enabled:
+            return
+        symbol, period, interval = key
+        filename = f"{symbol}__{period}__{interval}.parquet"
+        path = self.cache_path / filename
+        try:
+            df.to_parquet(path)
+            # Ensure file mtime reflects fetched time for TTL checks
+            ts = fetched_at.timestamp()
+            os.utime(path, (ts, ts))
+        except Exception as e:
+            self.logger.warning(f"Failed to write disk cache for {key}: {e}")
     
     def _make_request(self, method: str, endpoint: str, 
                       tr_id: str, params: Optional[Dict] = None,
@@ -196,6 +285,17 @@ class KISAPIManager:
             DataFrame with historical data or None
         """
         import yfinance as yf
+        key = self._cache_key(symbol, period, interval)
+        
+        # Try in-memory cache
+        cached = self._get_cached_history(key)
+        if cached is not None:
+            return cached
+        
+        # Try disk cache
+        disk_cached = self._load_disk_cache(key)
+        if disk_cached is not None:
+            return disk_cached
         
         for attempt in range(max_retries):
             try:
@@ -215,7 +315,16 @@ class KISAPIManager:
                 # Clean OHLC data - fix common yfinance data quality issues
                 hist = self._clean_ohlc_data(hist, symbol)
                 
-                return hist
+                fetched_at = datetime.utcnow()
+                
+                # Cache the cleaned data
+                if self.historical_cache_enabled:
+                    with self.cache_lock:
+                        self.hist_cache[key] = {"data": hist, "fetched_at": fetched_at}
+                    self.logger.debug(f"Cached historical data in memory for {key}")
+                    self._save_disk_cache(key, hist, fetched_at)
+                
+                return hist.copy(deep=True) if self.return_copy else hist
                 
             except Exception as e:
                 if attempt < max_retries - 1:

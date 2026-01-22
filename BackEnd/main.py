@@ -125,7 +125,8 @@ class USAAutoTrader:
         self.kis_api = KISAPIManager(
             {
                 'kis': self.config.kis.model_dump(),
-                'mode': self.config.mode
+                'mode': self.config.mode,
+                'data_cache': self.config.data_cache.model_dump()
             },
             self.logger
         )
