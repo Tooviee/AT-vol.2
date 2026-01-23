@@ -79,6 +79,7 @@ htmlcov/
 
 # txt
 server.txt
+beads.txt
 
 # Diagnostic/Temporary Scripts (keep locally, don't commit)
 BackEnd/check_*.py
@@ -91,3 +92,20 @@ FrontEnd/test_*.py
 # Directories
 Finan_Study/
 Files/
+
+# Beads (agent memory)
+.beads/beads.db
+.beads/*.db
+
+# Historical data cache (parquet files)
+**/hist_cache/
+**/data/hist_cache/
+*.parquet
+
+# Local tools/executables
+bd.exe
+bd
+
+# Temporary setup scripts
+create_beads_issues.ps1
+create_issues.txt

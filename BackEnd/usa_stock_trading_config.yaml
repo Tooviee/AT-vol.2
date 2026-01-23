@@ -18,23 +18,56 @@ display:
 
 # ===== SYMBOLS =====
 symbols:
+# Mag 7
   - AAPL
   - MSFT
   - GOOGL
   - NVDA
   - AMZN
   - TSLA
+
+# Space
+  - RKLB
+  - FLY
+
+# Drone
+  - AVAV
+  - KTOS
+  - RCAT
+  - UMAC
+  - JOBY
+
+# Shipbuilding
+  - HII
+  - GD
+  - RTX
+  - LMT
+  - GE
+
+# Bitcoin/Stablecoin
   - COIN
   - HOOD
+  - MSTR
+  - BMNR
+
+# Tech 
   - AVGO
   - MU
-  - MSTR
   - ORCL
   - INTC
-  - BMNR
-  - SMR
   - NBIS
-  - REMX
+
+# data storage
+#  - STX
+#  - SNDK
+
+# Energy
+#  - SMR
+#  - PLUG
+#  - BE
+
+# Earth
+#  - REMX
 
 # ===== STRATEGY =====
 strategy:

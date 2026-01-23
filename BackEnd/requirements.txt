@@ -44,3 +44,6 @@ pytest-asyncio==0.23.2
 
 # Cache
 pyarrow==14.0.2
+
+# Agent Memory
+beads-mcp>=0.48.0
