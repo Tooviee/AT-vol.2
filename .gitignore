@@ -1,9 +1,12 @@
 # Environment
 .env
+.env.local
+.env.*.local
 accounts.yaml
 .venv/
 venv/
 env/
+**/local_settings.py
 
 # Python
 __pycache__/
@@ -96,6 +99,7 @@ Files/
 # Beads (agent memory)
 .beads/beads.db
 .beads/*.db
+.beads/interactions.jsonl
 
 # Historical data cache (parquet files)
 **/hist_cache/

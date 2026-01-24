@@ -26,8 +26,11 @@ class DisplayConfig(BaseModel):
 
 
 class StrategyConfig(BaseModel):
-    sma_short: int = 10
-    sma_long: int = 30
+    """Hybrid MACD/RSI/ATR strategy: SMA 50/200, EMA 12/26, long-only."""
+    sma_50: int = 50
+    sma_200: int = 200
+    ema_fast: int = 12
+    ema_slow: int = 26
     macd_fast: int = 12
     macd_slow: int = 26
     macd_signal: int = 9
@@ -36,16 +39,11 @@ class StrategyConfig(BaseModel):
     rsi_overbought: int = 70
     atr_period: int = 14
 
-    @field_validator('sma_short')
+    @field_validator('sma_200')
     @classmethod
-    def sma_short_less_than_long(cls, v, info):
-        return v
-
-    @field_validator('sma_long')
-    @classmethod
-    def validate_sma_long(cls, v, info):
-        if 'sma_short' in info.data and v <= info.data['sma_short']:
-            raise ValueError('sma_long must be greater than sma_short')
+    def validate_sma_200_gt_sma_50(cls, v, info):
+        if 'sma_50' in info.data and v <= info.data['sma_50']:
+            raise ValueError('sma_200 must be greater than sma_50')
         return v
 
 
@@ -54,6 +52,7 @@ class RiskConfig(BaseModel):
     max_position_size_percent: float = 10.0
     stop_loss_atr_multiplier: float = 2.0
     take_profit_atr_multiplier: float = 3.0
+    risk_reward_ratio: float = 2.0  # 1.5:1 or 2:1 for take-profit vs ATR-based stop
     max_total_exposure_percent: float = 80.0
     max_drawdown_percent: float = 15.0
     max_correlated_positions: int = 3
@@ -330,8 +329,8 @@ class ConfigLoader:
             errors.append("No trading symbols configured")
         
         # Validate strategy parameters
-        if self.config.strategy.sma_short >= self.config.strategy.sma_long:
-            errors.append("SMA short period must be less than long period")
+        if self.config.strategy.sma_50 >= self.config.strategy.sma_200:
+            errors.append("sma_50 must be less than sma_200")
         
         return len(errors) == 0, errors
     

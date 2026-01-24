@@ -8,13 +8,12 @@ This project uses a specialized agent structure. See `AGENT_STRUCTURE.md` for de
 
 ### Available Agents
 
-1. **Agent Resource Manager** - Assigns work to appropriate agents (first point of contact)
-2. **Orchestrator** - Project coordination and task delegation
-3. **Strategy Manager** - Trading logic, indicators, signals
-4. **Backend Developer** - Infrastructure, APIs, data persistence
-5. **Frontend Developer** - Django dashboard, UI/UX, visualization
-6. **ML Engineer** - Model training, feature engineering, A/B testing
-7. **Testing Agent** - Test coverage, quality assurance
+1. **Orchestrator** - Project coordination and task delegation
+2. **Strategy Manager** - Trading logic, indicators, signals
+3. **Backend Developer** - Infrastructure, APIs, data persistence
+4. **Frontend Developer** - Django dashboard, UI/UX, visualization
+5. **ML Engineer** - Model training, feature engineering, A/B testing
+6. **Testing Agent** - Test coverage, quality assurance
 
 ## Quick Reference
 
@@ -28,42 +27,38 @@ bd sync               # Sync with git
 
 ## Issue Routing Guidelines
 
-### Agent Resource Manager Role
-
-The **Agent Resource Manager** is responsible for assigning work to the appropriate specialist agent. When you receive a task, analyze it and route it based on:
-
-#### Route to Strategy Manager when:
+### Route to Strategy Manager when:
 - Trading strategy, indicators (MACD, RSI, ATR, SMA, EMA)
 - Signal generation, entry/exit conditions
 - Risk parameter tuning (stop-loss, take-profit)
 - Strategy backtesting
 - **Labels**: `strategy`, `indicators`, `signals`, `backtesting`
 
-#### Route to Backend Developer when:
+### Route to Backend Developer when:
 - Infrastructure, APIs, databases
 - Order management, risk management systems
 - Error handling, reliability, monitoring
 - Database migrations, data persistence
 - **Labels**: `infrastructure`, `api`, `database`, `system`
 
-#### Route to Frontend Developer when:
+### Route to Frontend Developer when:
 - UI, dashboard, visualization
 - Django templates, charts, user experience
 - Responsive design, accessibility
 - **Labels**: `ui`, `dashboard`, `visualization`, `frontend`
 
-#### Route to ML Engineer when:
+### Route to ML Engineer when:
 - ML models, training, features
 - Model evaluation, A/B testing
 - Feature engineering
 - **Labels**: `ml`, `model`, `training`, `features`
 
-#### Route to Testing Agent when:
+### Route to Testing Agent when:
 - Tests, quality assurance, coverage
 - Test maintenance, automation
 - **Labels**: `test`, `qa`, `coverage`
 
-#### Route to Orchestrator when:
+### Route to Orchestrator when:
 - Large features affecting multiple components
 - Requires coordination across agents
 - Architectural decisions
@@ -71,11 +66,10 @@ The **Agent Resource Manager** is responsible for assigning work to the appropri
 
 ### Assignment Workflow
 
-1. **Agent Resource Manager** analyzes incoming task
-2. Determines which agent(s) should handle it
-3. Assigns work based on issue type and labels
-4. If multiple agents needed → **Orchestrator** breaks into sub-tasks
-5. Specialized agents claim work via `bd update <id> --status in_progress`
+1. Incoming task is analyzed and routed to the appropriate agent(s)
+2. Work is assigned based on issue type and labels
+3. If multiple agents needed → **Orchestrator** breaks into sub-tasks
+4. Specialized agents claim work via `bd update <id> --status in_progress`
 
 ### File Ownership
 
@@ -119,7 +113,6 @@ If an agent needs to modify another agent's file, they should:
 ## Agent-Specific Rules
 
 Each agent has detailed rules in `.cursor/rules/`:
-- `.cursor/rules/agent-resource-manager.mdc` - Work assignment
 - `.cursor/rules/orchestrator.mdc` - Project coordination
 - `.cursor/rules/strategy-manager.mdc` - Trading logic
 - `.cursor/rules/backend-developer.mdc` - Infrastructure

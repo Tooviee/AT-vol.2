@@ -14,6 +14,9 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='trading_app/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     
+    # API
+    path('api/', include('api.urls')),
+    
     # Trading app
     path('', include('trading_app.urls')),
 ]

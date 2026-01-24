@@ -70,24 +70,29 @@ symbols:
 #  - REMX
 
 # ===== STRATEGY =====
+# Hybrid MACD/RSI/ATR: SMA 50/200, EMA 12/26, long-only.
+# Entry: Price > SMA 200, EMA12 cross above EMA26 (MACD>0), RSI<70, SMA50 up or Price>SMA50.
+# Exit: trailing ATR stop (2×ATR), take-profit 1.5:1 or 2:1 R:R.
 strategy:
-  # Options: 50/200 (long-term, few signals), 20/50 (medium), 10/30 (active)
-  sma_short: 20
-  sma_long: 50
+  sma_50: 50
+  sma_200: 200
+  ema_fast: 12
+  ema_slow: 26
   macd_fast: 12
   macd_slow: 26
   macd_signal: 9
   rsi_period: 14
   rsi_oversold: 30
   rsi_overbought: 70
-  atr_period: 14  # For stop-loss/take-profit
+  atr_period: 14
 
 # ===== RISK =====
 risk:
   risk_per_trade_percent: 1
   max_position_size_percent: 10
-  stop_loss_atr_multiplier: 2.0
-  take_profit_atr_multiplier: 3.0
+  stop_loss_atr_multiplier: 2.0   # trailing and initial stop: 2 × ATR
+  take_profit_atr_multiplier: 3.0 # used if risk_reward_ratio not set
+  risk_reward_ratio: 2.0          # 1.5:1 or 2:1 for take-profit vs ATR stop
   max_total_exposure_percent: 80
   max_drawdown_percent: 15
   max_correlated_positions: 3

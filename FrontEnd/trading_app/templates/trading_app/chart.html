@@ -1,0 +1,47 @@
+{% extends 'trading_app/base.html' %}
+{% load static %}
+
+{% block title %}Chart – {{ symbol }}{% endblock %}
+
+{% block content %}
+<div class="chart-container">
+  <div class="chart-toolbar">
+    <label for="chart-symbol">Symbol</label>
+    <input type="text" id="chart-symbol" value="{{ symbol }}" maxlength="10" placeholder="e.g. AAPL" />
+    <label for="chart-period">Period</label>
+    <select id="chart-period">
+      <option value="1y" {% if period == '1y' %}selected{% endif %}>1y</option>
+      <option value="6mo" {% if period == '6mo' %}selected{% endif %}>6mo</option>
+      <option value="3mo" {% if period == '3mo' %}selected{% endif %}>3mo</option>
+      <option value="1mo" {% if period == '1mo' %}selected{% endif %}>1mo</option>
+      <option value="5d" {% if period == '5d' %}selected{% endif %}>5d</option>
+      <option value="1d" {% if period == '1d' %}selected{% endif %}>1d</option>
+    </select>
+    <button type="button" id="chart-load">Load</button>
+  </div>
+
+  <div id="chart-loading" class="chart-loading">Loading chart data…</div>
+  <div id="chart-error" class="chart-error" style="display:none;"></div>
+  <div id="chart-root" class="chart-root" style="display:none;"></div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/chart.css' %}" />
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="{% static 'js/chart.js' %}"></script>
+<script>
+  (function() {
+    var sym = document.getElementById('chart-symbol');
+    var period = document.getElementById('chart-period');
+    var loadBtn = document.getElementById('chart-load');
+    if (loadBtn) loadBtn.addEventListener('click', function() {
+      window.TradingChart.load(sym && sym.value ? sym.value.trim().toUpperCase() : 'AAPL', period ? period.value : '1y', '1d');
+    });
+    window.TradingChart.load('{{ symbol }}', '{{ period }}', '{{ interval }}');
+  })();
+</script>
+{% endblock %}

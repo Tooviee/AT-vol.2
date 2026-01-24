@@ -10,8 +10,7 @@ Based on your codebase analysis, here's a recommended agent structure that balan
 
 ### Core Agents (Essential)
 
-1. **Agent Resource Manager** - Assigns work to appropriate agents (first point of contact)
-2. **Orchestrator** - Project-level coordination and task delegation
+1. **Orchestrator** - Project-level coordination and task delegation
 3. **Strategy Manager** - Trading logic, indicators, ML integration
 4. **Backend Developer** - Infrastructure, APIs, data persistence, system modules
 5. **Frontend Developer** - Django dashboard, UI/UX, visualization
@@ -19,41 +18,14 @@ Based on your codebase analysis, here's a recommended agent structure that balan
 
 ### Specialized Agents (Consider Adding)
 
-7. **ML Engineer** - Model training, feature engineering, A/B testing
-8. **DevOps/Infrastructure Agent** - Deployment, monitoring, configuration management
+6. **ML Engineer** - Model training, feature engineering, A/B testing
+7. **DevOps/Infrastructure Agent** - Deployment, monitoring, configuration management
 
 ---
 
 ## Agent Responsibilities
 
-### 1. Agent Resource Manager (Work Assignment)
-
-**What it does:**
-- **Work assignment**: Analyzes incoming tasks and routes them to appropriate specialist agents
-- **Issue analysis**: Reviews requirements and determines which components are affected
-- **Work routing**: Uses beads issue labels to route work correctly
-- **Agent coordination**: Monitors agent workload and helps resolve assignment questions
-
-**What it does NOT do:**
-- ❌ Implement features (delegates to specialists)
-- ❌ Break down large tasks (delegates to Orchestrator)
-- ❌ Make architectural decisions (delegates to Orchestrator)
-
-**Example tasks:**
-- "Enhance trading strategy" → Routes to Strategy Manager
-- "Fix order timeout" → Routes to Backend Developer
-- "Add TradingView charts" → Routes to Frontend Developer
-- "Retrain ML model" → Routes to ML Engineer
-- "Add real-time monitoring" → Routes to Orchestrator (multi-agent task)
-
-**Memory/Context:**
-- Understands agent specializations and capabilities
-- Knows file ownership boundaries
-- Tracks routing patterns and assignment history
-
----
-
-### 2. Orchestrator (Project Manager)
+### 1. Orchestrator (Project Manager)
 
 **What it does:**
 - **Task delegation**: Routes work to appropriate agents based on issue type
@@ -83,7 +55,7 @@ Based on your codebase analysis, here's a recommended agent structure that balan
 
 ---
 
-### 3. Strategy Manager (Trading Logic Specialist)
+### 2. Strategy Manager (Trading Logic Specialist)
 
 **What it does:**
 - **Trading strategy development**: Implements and refines entry/exit logic
@@ -112,7 +84,7 @@ Based on your codebase analysis, here's a recommended agent structure that balan
 
 ---
 
-### 4. Backend Developer (Infrastructure Specialist)
+### 3. Backend Developer (Infrastructure Specialist)
 
 **What it does:**
 - **System modules**: Order management, risk management, circuit breakers, health monitoring
@@ -144,7 +116,7 @@ Based on your codebase analysis, here's a recommended agent structure that balan
 
 ---
 
-### 5. Frontend Developer (UI/UX Specialist)
+### 4. Frontend Developer (UI/UX Specialist)
 
 **What it does:**
 - **Django application**: Views, templates, static files
@@ -189,7 +161,7 @@ Based on your codebase analysis, here's a recommended agent structure that balan
 
 ---
 
-### 7. ML Engineer (Optional but Recommended)
+### 6. ML Engineer (Optional but Recommended)
 
 **What it does:**
 - **Model development**: LightGBM training, hyperparameter tuning
@@ -326,18 +298,17 @@ orchestrator: → Orchestrator
 
 ### Minimum Viable Setup (Start Here)
 
-1. **Agent Resource Manager** - Assigns work to agents
-2. **Orchestrator** - Coordinates everything
-3. **Strategy Manager** - Trading logic
-4. **Backend Developer** - Infrastructure
-5. **Frontend Developer** - UI
-6. **Testing Agent** - Quality assurance
+1. **Orchestrator** - Coordinates everything
+2. **Strategy Manager** - Trading logic
+3. **Backend Developer** - Infrastructure
+4. **Frontend Developer** - UI
+5. **Testing Agent** - Quality assurance
 
 ### Full Setup (As Project Grows)
 
 Add when needed:
-7. **ML Engineer** - When ML work becomes frequent
-8. **DevOps Agent** - When deploying to production
+6. **ML Engineer** - When ML work becomes frequent
+7. **DevOps Agent** - When deploying to production
 
 ---
 
@@ -349,7 +320,6 @@ Create `.cursor/rules/` files for each agent:
 
 ```
 .cursor/rules/
-├── agent-resource-manager.mdc
 ├── orchestrator.mdc
 ├── strategy-manager.mdc
 ├── backend-developer.mdc

@@ -174,7 +174,8 @@ class USAAutoTrader:
         strategy_config = self.config.strategy.model_dump()
         strategy_config.update({
             'stop_loss_atr_multiplier': self.config.risk.stop_loss_atr_multiplier,
-            'take_profit_atr_multiplier': self.config.risk.take_profit_atr_multiplier
+            'take_profit_atr_multiplier': self.config.risk.take_profit_atr_multiplier,
+            'risk_reward_ratio': getattr(self.config.risk, 'risk_reward_ratio', 2.0),
         })
         
         ml_config = self.config.ml.model_dump()
@@ -309,7 +310,10 @@ class USAAutoTrader:
                     'quantity': current_position.quantity,
                     'avg_price': current_position.avg_price,
                     'stop_loss': current_position.stop_loss,
-                    'take_profit': current_position.take_profit
+                    'take_profit': current_position.take_profit,
+                    'side': 'buy',
+                    'entry_time': getattr(current_position, 'entry_time', None)
+                    or getattr(current_position, 'entry_date', None),
                 }
                 self.logger.debug(f"{symbol}: Existing position detected ({current_position.quantity} shares @ ${current_position.avg_price:.2f})")
             

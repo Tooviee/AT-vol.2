@@ -8,6 +8,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -239,6 +240,91 @@ async def get_pnl(session: Dict = Depends(require_auth)):
         return {"error": str(e)}
 
 
+@app.get("/api/chart-data")
+async def get_chart_data(
+    symbol: str,
+    period: str = "1y",
+    interval: str = "1d",
+    session: Dict = Depends(require_auth),
+):
+    """
+    Export strategy data in JSON format for TradingView Lightweight Charts.
+
+    - **symbol** (required): Stock symbol (e.g. AAPL)
+    - **period** (optional): Time period (default: 1y)
+    - **interval** (optional): Data interval (default: 1d)
+
+    Returns candlestick_data, ema12_data, ema26_data, sma200_data, markers_data.
+    Times are UNIX timestamps in seconds. Markers come from Buy_Signal column when present.
+    """
+    if not trader:
+        raise HTTPException(status_code=503, detail="Trader not connected")
+    if not trader.kis_api or not trader.strategy:
+        raise HTTPException(status_code=503, detail="Trader components not available")
+
+    symbol = symbol.strip().upper()
+    if not symbol:
+        raise HTTPException(status_code=400, detail="symbol is required")
+
+    hist = trader.kis_api.get_historical_data(symbol, period=period, interval=interval)
+    if hist is None or hist.empty:
+        raise HTTPException(status_code=404, detail=f"No data for symbol {symbol}")
+
+    df = trader.strategy.calculate_indicators(hist.copy())
+
+    def _unix_sec(ts) -> int:
+        t = ts if hasattr(ts, "timestamp") else pd.Timestamp(ts)
+        return int(t.timestamp())
+
+    candlestick_data = []
+    for ts, row in df.iterrows():
+        o, h, l, c = row.get("Open"), row.get("High"), row.get("Low"), row.get("Close")
+        if pd.notna(o) and pd.notna(h) and pd.notna(l) and pd.notna(c):
+            candlestick_data.append({
+                "time": _unix_sec(ts),
+                "open": round(float(o), 4),
+                "high": round(float(h), 4),
+                "low": round(float(l), 4),
+                "close": round(float(c), 4),
+            })
+
+    ema12_data = [
+        {"time": _unix_sec(ts), "value": round(float(row["EMA_12"]), 4)}
+        for ts, row in df.iterrows()
+        if "EMA_12" in row and pd.notna(row.get("EMA_12"))
+    ]
+    ema26_data = [
+        {"time": _unix_sec(ts), "value": round(float(row["EMA_26"]), 4)}
+        for ts, row in df.iterrows()
+        if "EMA_26" in row and pd.notna(row.get("EMA_26"))
+    ]
+    sma200_data = [
+        {"time": _unix_sec(ts), "value": round(float(row["SMA_200"]), 4)}
+        for ts, row in df.iterrows()
+        if "SMA_200" in row and pd.notna(row.get("SMA_200"))
+    ]
+
+    markers_data = []
+    if "Buy_Signal" in df.columns:
+        buy = df.loc[df["Buy_Signal"] == 1]
+        for ts in buy.index:
+            markers_data.append({
+                "time": _unix_sec(ts),
+                "position": "belowBar",
+                "color": "green",
+                "shape": "arrowUp",
+                "text": "BUY",
+            })
+
+    return {
+        "candlestick_data": candlestick_data,
+        "ema12_data": ema12_data,
+        "ema26_data": ema26_data,
+        "sma200_data": sma200_data,
+        "markers_data": markers_data,
+    }
+
+
 @app.post("/api/circuit-breaker/reset")
 async def reset_circuit_breaker(session: Dict = Depends(require_auth)):
     """Reset circuit breaker"""
@@ -432,9 +518,73 @@ def generate_dashboard_html() -> str:
                 </tbody>
             </table>
         </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <h2>PRICE CHART</h2>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
+                <label>Symbol</label>
+                <select id="chart-symbol" style="padding:0.35rem 0.5rem; border-radius:0.5rem; background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2); min-width:100px;"></select>
+                <label>Period</label>
+                <select id="chart-period" style="padding:0.35rem 0.5rem; border-radius:0.5rem; background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);">
+                    <option value="1y">1y</option><option value="6mo">6mo</option><option value="3mo">3mo</option><option value="1mo">1mo</option>
+                </select>
+                <button type="button" id="chart-load" class="refresh-btn">Load</button>
+            </div>
+            <div id="chart-loading" style="display:none;">Loading chart…</div>
+            <div id="chart-error" style="display:none; color:#f87171;"></div>
+            <div id="chart-root" style="min-height:400px;"></div>
+        </div>
     </div>
-    
+
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <script>
+        var dChart = null, dCandle = null, dEma12 = null, dEma26 = null, dSma200 = null;
+        window.chartDataLoaded = false;
+
+        function ensureChart() {
+            if (dChart) return;
+            var root = document.getElementById('chart-root');
+            if (!root) return;
+            root.innerHTML = '';
+            dChart = LightweightCharts.createChart(root, {
+                layout: { background: { color: '#1a1a2e' }, textColor: '#e0e0e0' },
+                grid: { vertLines: { color: '#2a2a3e' }, horzLines: { color: '#2a2a3e' } },
+                width: Math.max(root.clientWidth || 0, 600), height: 400,
+                rightPriceScale: { borderColor: '#444' }, timeScale: { borderColor: '#444', timeVisible: true, secondsVisible: false },
+            });
+            dCandle = dChart.addCandlestickSeries({ upColor: '#26a69a', downColor: '#ef5350', borderDownColor: '#ef5350', borderUpColor: '#26a69a' });
+            dEma12 = dChart.addLineSeries({ color: 'rgb(255,255,0)', lineWidth: 2 });
+            dEma26 = dChart.addLineSeries({ color: 'orange', lineWidth: 2 });
+            dSma200 = dChart.addLineSeries({ color: 'blue', lineWidth: 2 });
+            if (window.ResizeObserver && root) new ResizeObserver(function(){ if (dChart && root) dChart.applyOptions({ width: root.clientWidth }); }).observe(root);
+        }
+
+        async function loadChart(sym, period, interval) {
+            sym = (sym || 'AAPL').trim().toUpperCase();
+            period = period || '1y';
+            interval = interval || '1d';
+            var loading = document.getElementById('chart-loading'), err = document.getElementById('chart-error'), root = document.getElementById('chart-root');
+            if (loading) loading.style.display = 'block';
+            if (err) { err.textContent = ''; err.style.display = 'none'; }
+            if (root) root.style.display = 'none';
+            try {
+                var res = await fetch('/api/chart-data?symbol=' + encodeURIComponent(sym) + '&period=' + encodeURIComponent(period) + '&interval=' + encodeURIComponent(interval));
+                var data = res.ok ? await res.json() : {};
+                if (!res.ok) { if (err) { err.textContent = (data.detail || res.statusText || 'Request failed'); err.style.display = 'block'; } return; }
+                if (data.error) { if (err) { err.textContent = data.error; err.style.display = 'block'; } return; }
+                ensureChart();
+                dCandle.setData(data.candlestick_data || []);
+                dEma12.setData(data.ema12_data || []);
+                dEma26.setData(data.ema26_data || []);
+                dSma200.setData(data.sma200_data || []);
+                dCandle.setMarkers(data.markers_data || []);
+                dChart.timeScale().fitContent();
+                if (root) root.style.display = 'block';
+                window.chartDataLoaded = true;
+            } catch (e) { if (err) { err.textContent = 'Failed to load chart: ' + (e.message || 'Unknown'); err.style.display = 'block'; } }
+            if (loading) loading.style.display = 'none';
+        }
+
         async function refreshData() {
             try {
                 const status = await fetch('/api/status').then(r => r.json());
@@ -494,11 +644,27 @@ def generate_dashboard_html() -> str:
                 } else {
                     tbody.innerHTML = '<tr><td colspan="5" style="opacity: 0.5;">No positions</td></tr>';
                 }
-                
+
+                // Chart: fill symbol select (positions first, else AAPL); auto-load first position when you have positions
+                var sel = document.getElementById('chart-symbol');
+                if (sel) {
+                    var syms = (positions.positions || []).map(function(p){ return p.symbol; }).filter(Boolean);
+                    if (!syms.length) syms = ['AAPL'];
+                    sel.innerHTML = '';
+                    syms.forEach(function(s){ var o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+                    sel.value = syms[0];
+                    if ((positions.positions || []).length && !window.chartDataLoaded) {
+                        loadChart(positions.positions[0].symbol, (document.getElementById('chart-period') || {}).value || '1y', '1d');
+                    }
+                }
             } catch (error) {
                 console.error('Error refreshing data:', error);
             }
         }
+
+        document.getElementById('chart-load') && document.getElementById('chart-load').addEventListener('click', function() {
+            loadChart(document.getElementById('chart-symbol').value, (document.getElementById('chart-period') || {}).value || '1y', '1d');
+        });
         
         // Initial load
         refreshData();

@@ -15,4 +15,5 @@ urlpatterns = [
     path('risk/', views.risk_dashboard, name='risk_dashboard'),
     path('market-status/', views.market_status, name='market_status'),
     path('ml-insights/', views.ml_insights, name='ml_insights'),
+    path('chart/', views.chart, name='chart'),
 ]

@@ -1,0 +1,94 @@
+/* TradingView Lightweight Charts - dark theme and layout */
+
+.chart-container {
+  max-width: 100%;
+  padding: 0 1rem 1rem;
+}
+
+.chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.chart-toolbar label {
+  color: #b0b0b0;
+  font-size: 0.9rem;
+}
+
+.chart-toolbar input[type="text"] {
+  width: 6rem;
+  padding: 0.35rem 0.5rem;
+  background: #2a2a3e;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.chart-toolbar input:focus {
+  outline: none;
+  border-color: #4ade80;
+}
+
+.chart-toolbar select {
+  padding: 0.35rem 0.5rem;
+  background: #2a2a3e;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.chart-toolbar button {
+  padding: 0.35rem 0.75rem;
+  background: #4ade80;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chart-toolbar button:hover {
+  background: #22c55e;
+}
+
+.chart-loading {
+  padding: 2rem;
+  text-align: center;
+  color: #a0a0a0;
+  background: #1a1a2e;
+  border-radius: 8px;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-error {
+  padding: 1rem;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 8px;
+}
+
+.chart-root {
+  background: #1a1a2e;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 450px;
+}
+
+@media (max-width: 768px) {
+  .chart-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .chart-root {
+    min-height: 360px;
+  }
+}

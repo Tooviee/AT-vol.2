@@ -340,6 +340,23 @@ def ml_insights(request):
         return render(request, 'trading_app/ml_insights.html', context)
 
 
+@login_required
+def chart(request):
+    """TradingView Lightweight Charts - OHLC, EMA 12/26, SMA 200, buy markers.
+    Defaults to first position's symbol when the user has positions."""
+    db = get_db_adapter()
+    positions = db.get_current_positions()
+    default_symbol = (positions[0].get('symbol') if positions else None) or 'AAPL'
+    symbol = (request.GET.get('symbol') or default_symbol).strip().upper()[:10]
+    period = request.GET.get('period') or '1y'
+    interval = request.GET.get('interval') or '1d'
+    return render(request, 'trading_app/chart.html', {
+        'symbol': symbol,
+        'period': period,
+        'interval': interval,
+    })
+
+
 # API endpoints for AJAX updates
 @login_required
 def api_balance(request):
