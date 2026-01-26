@@ -166,7 +166,7 @@ The system is configured via `usa_stock_trading_config.yaml`. Key sections inclu
 
 - **Trading Mode**: `paper` or `live`
 - **Symbols**: List of stocks to trade
-- **Strategy**: Technical indicator parameters (SMA, MACD, RSI, ATR)
+- **Strategy**: Hybrid MACD/RSI/ATR with SMA 50/200, EMA 12/26 (long-only, trailing stops)
 - **Risk Management**: Position sizing, stop-loss, take-profit, circuit breakers
 - **ML Settings**: Enable/disable ML, confidence thresholds, training parameters
 - **Market Hours**: Trading windows, holiday handling
@@ -217,7 +217,7 @@ Test coverage includes:
 ### Core Modules
 
 - **`main.py`**: Main orchestrator that coordinates all modules and runs the trading loop
-- **`modules/strategy.py`**: Technical analysis engine (SMA, MACD, RSI, ATR)
+- **`modules/strategy.py`**: Hybrid technical analysis engine (SMA 50/200, EMA 12/26, MACD, RSI, ATR)
 - **`modules/ml_strategy.py`**: ML-enhanced strategy wrapper
 - **`modules/risk_management.py`**: Position sizing, stop-loss, take-profit calculation
 - **`modules/order_manager.py`**: Order state machine with timeout handling

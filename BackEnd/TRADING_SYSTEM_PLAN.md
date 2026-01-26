@@ -203,7 +203,7 @@ AT vol.2/
 | Category | Features |
 |----------|----------|
 | **Price Momentum** | `price_change_1d`, `price_change_5d`, `price_change_20d` |
-| **Moving Averages** | `sma_ratio`, `price_to_sma_short`, `price_to_sma_long`, `sma_trend` |
+| **Moving Averages** | `ema_ratio`, `price_to_ema_12`, `price_to_ema_26`, `ema_trend` |
 | **MACD** | `macd`, `macd_signal`, `macd_histogram`, `macd_hist_change`, `macd_trend` |
 | **RSI** | `rsi`, `rsi_zone`, `rsi_change` |
 | **Volatility** | `atr_percent`, `volatility`, `volatility_change` |
@@ -280,9 +280,12 @@ symbols:
   - AMZN
 
 # ===== STRATEGY =====
+# Hybrid MACD/RSI/ATR: SMA 50/200, EMA 12/26, long-only
 strategy:
-  sma_short: 10
-  sma_long: 30
+  sma_50: 50
+  sma_200: 200
+  ema_fast: 12
+  ema_slow: 26
   macd_fast: 12
   macd_slow: 26
   macd_signal: 9

@@ -31,8 +31,9 @@ def sample_df():
     }, index=dates)
     
     # Add indicators (normally calculated by strategy)
-    df['SMA_short'] = df['Close'].rolling(10).mean()
-    df['SMA_long'] = df['Close'].rolling(30).mean()
+    # New strategy uses EMA 12/26
+    df['EMA_12'] = df['Close'].ewm(span=12, adjust=False).mean()
+    df['EMA_26'] = df['Close'].ewm(span=26, adjust=False).mean()
     
     # MACD
     exp_fast = df['Close'].ewm(span=12).mean()
@@ -93,14 +94,14 @@ class TestFeatureExtractor:
         assert isinstance(features.price_change_5d, float)
         assert isinstance(features.price_change_20d, float)
     
-    def test_sma_features(self, feature_extractor, sample_df):
-        """Test SMA features"""
+    def test_ema_features(self, feature_extractor, sample_df):
+        """Test moving average features (EMA 12/26)"""
         features = feature_extractor.extract(sample_df, "TEST")
         
-        assert features.sma_short > 0
-        assert features.sma_long > 0
-        assert features.sma_ratio > 0
-        assert features.sma_trend in [-1, 1]
+        assert features.ema_12 > 0
+        assert features.ema_26 > 0
+        assert features.ema_ratio > 0
+        assert features.ema_trend in [-1, 1]
     
     def test_macd_features(self, feature_extractor, sample_df):
         """Test MACD features"""

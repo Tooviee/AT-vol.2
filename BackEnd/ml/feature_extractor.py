@@ -27,13 +27,13 @@ class MLFeatures:
     price_change_5d: float  # 5-day price change %
     price_change_20d: float  # 20-day price change %
     
-    # Moving averages
-    sma_short: float
-    sma_long: float
-    sma_ratio: float  # short/long ratio
-    price_to_sma_short: float  # price/sma_short ratio
-    price_to_sma_long: float  # price/sma_long ratio
-    sma_trend: int  # 1 if short > long, else -1
+    # Moving averages (EMA 12/26)
+    ema_12: float
+    ema_26: float
+    ema_ratio: float  # EMA_12/EMA_26 ratio
+    price_to_ema_12: float  # price/EMA_12 ratio
+    price_to_ema_26: float  # price/EMA_26 ratio
+    ema_trend: int  # 1 if EMA_12 > EMA_26, else -1
     
     # MACD
     macd: float
@@ -85,10 +85,10 @@ class MLFeatures:
             'price_change_1d': self.price_change_1d,
             'price_change_5d': self.price_change_5d,
             'price_change_20d': self.price_change_20d,
-            'sma_ratio': self.sma_ratio,
-            'price_to_sma_short': self.price_to_sma_short,
-            'price_to_sma_long': self.price_to_sma_long,
-            'sma_trend': self.sma_trend,
+            'ema_ratio': self.ema_ratio,
+            'price_to_ema_12': self.price_to_ema_12,
+            'price_to_ema_26': self.price_to_ema_26,
+            'ema_trend': self.ema_trend,
             'macd': self.macd,
             'macd_signal': self.macd_signal,
             'macd_histogram': self.macd_histogram,
@@ -115,7 +115,7 @@ class FeatureExtractor:
     # Feature names in order for model input
     FEATURE_NAMES = [
         'price_change_1d', 'price_change_5d', 'price_change_20d',
-        'sma_ratio', 'price_to_sma_short', 'price_to_sma_long', 'sma_trend',
+        'ema_ratio', 'price_to_ema_12', 'price_to_ema_26', 'ema_trend',
         'macd', 'macd_signal', 'macd_histogram', 'macd_hist_change', 'macd_trend',
         'rsi', 'rsi_zone', 'rsi_change',
         'atr_percent', 'volatility', 'volatility_change',
@@ -164,13 +164,13 @@ class FeatureExtractor:
         price_change_5d = self._safe_pct_change(df['Close'], 5)
         price_change_20d = self._safe_pct_change(df['Close'], 20)
         
-        # SMA features
-        sma_short = float(latest.get('SMA_short', price))
-        sma_long = float(latest.get('SMA_long', price))
-        sma_ratio = sma_short / sma_long if sma_long != 0 else 1.0
-        price_to_sma_short = price / sma_short if sma_short != 0 else 1.0
-        price_to_sma_long = price / sma_long if sma_long != 0 else 1.0
-        sma_trend = 1 if sma_short > sma_long else -1
+        # Moving average features (EMA 12/26)
+        ema_12 = float(latest.get('EMA_12', price))
+        ema_26 = float(latest.get('EMA_26', price))
+        ema_ratio = ema_12 / ema_26 if ema_26 != 0 else 1.0
+        price_to_ema_12 = price / ema_12 if ema_12 != 0 else 1.0
+        price_to_ema_26 = price / ema_26 if ema_26 != 0 else 1.0
+        ema_trend = 1 if ema_12 > ema_26 else -1
         
         # MACD features
         macd = float(latest.get('MACD', 0))
@@ -213,12 +213,12 @@ class FeatureExtractor:
             price_change_1d=price_change_1d,
             price_change_5d=price_change_5d,
             price_change_20d=price_change_20d,
-            sma_short=sma_short,
-            sma_long=sma_long,
-            sma_ratio=sma_ratio,
-            price_to_sma_short=price_to_sma_short,
-            price_to_sma_long=price_to_sma_long,
-            sma_trend=sma_trend,
+            ema_12=ema_12,
+            ema_26=ema_26,
+            ema_ratio=ema_ratio,
+            price_to_ema_12=price_to_ema_12,
+            price_to_ema_26=price_to_ema_26,
+            ema_trend=ema_trend,
             macd=macd,
             macd_signal=macd_signal,
             macd_histogram=macd_histogram,

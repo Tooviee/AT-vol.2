@@ -132,9 +132,6 @@ class USAStrategy:
         df['MACD_prev'] = df['MACD'].shift(1)
         df['MACD_cross_above_zero'] = (df['MACD_prev'] <= 0) & (df['MACD'] > 0)
 
-        # For ML/backward compatibility: alias short/long to EMA 12/26
-        df['SMA_short'] = df['EMA_12']
-        df['SMA_long'] = df['EMA_26']
 
         # Legacy crossover columns used by some consumers
         df['SMA_cross'] = np.where(df['EMA_12'] > df['EMA_26'], 1, -1)
@@ -368,8 +365,6 @@ class USAStrategy:
             "sma_200": float(latest['SMA_200']),
             "ema_12": float(latest['EMA_12']),
             "ema_26": float(latest['EMA_26']),
-            "sma_short": float(latest['SMA_short']),
-            "sma_long": float(latest['SMA_long']),
             "sma_trend": "bullish" if latest['Close'] > latest['SMA_200'] else "bearish",
             "macd": float(latest['MACD']),
             "macd_signal": float(latest['MACD_signal']),

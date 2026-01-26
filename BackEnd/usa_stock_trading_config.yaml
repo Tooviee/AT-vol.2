@@ -28,13 +28,10 @@ symbols:
 
 # Space
   - RKLB
-  - FLY
 
 # Drone
   - AVAV
   - KTOS
-  - RCAT
-  - UMAC
   - JOBY
 
 # Shipbuilding
@@ -43,6 +40,9 @@ symbols:
   - RTX
   - LMT
   - GE
+  - LHX
+  - NOC
+  - ITA
 
 # Bitcoin/Stablecoin
   - COIN
@@ -52,22 +52,33 @@ symbols:
 
 # Tech 
   - AVGO
-  - MU
   - ORCL
-  - INTC
   - NBIS
 
-# data storage
-#  - STX
-#  - SNDK
+# Semiconductor
+  - STX
+  - SNDK
+  - MU
+  - WDC
+  - INTC
+  - LRCX
+  - KLAC
 
 # Energy
-#  - SMR
-#  - PLUG
-#  - BE
+  - SMR
+  - BE
 
-# Earth
+# ETF
+#  - WGMI
+#  - URA
+#  - SLV
+#  - ARKX
 #  - REMX
+#  - SHLD
+#  - XME
+#  - SIL
+#  - BLOK
+#  - OIH
 
 # ===== STRATEGY =====
 # Hybrid MACD/RSI/ATR: SMA 50/200, EMA 12/26, long-only.

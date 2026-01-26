@@ -92,8 +92,6 @@ class TestStrategyIndicators:
         assert 'MACD_signal' in df.columns
         assert 'RSI' in df.columns
         assert 'ATR' in df.columns
-        assert 'SMA_short' in df.columns  # alias for EMA_12
-        assert 'SMA_long' in df.columns   # alias for EMA_26
     
     def test_sma_values(self, strategy, sample_data):
         """Test SMA 50 calculation correctness"""
