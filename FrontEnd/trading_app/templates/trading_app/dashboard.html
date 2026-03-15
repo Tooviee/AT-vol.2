@@ -58,7 +58,7 @@
         <div class="card-header">
             <h3 class="card-title">
                 <span class="card-title-icon">📈</span>
-                P&L History (Last 30 Days)
+                Portfolio Value &amp; P&L (Last 30 Days)
             </h3>
             <div class="chart-controls">
                 <button class="chart-time-btn active" data-days="7">7D</button>
@@ -185,11 +185,12 @@
 
 {% block extra_js %}
 <script>
-    // P&L Chart with dark theme
+    // Portfolio value & P&L Chart (ending balance shows changes from buys/sells)
     const pnlData = [
         {% for pnl in pnl_history %}
         {
             date: '{{ pnl.date|date:"Y-m-d" }}',
+            ending_balance_krw: {% if pnl.ending_balance_krw is not None %}{{ pnl.ending_balance_krw|floatformat:0 }}{% else %}null{% endif %},
             realized_pnl_krw: {{ pnl.realized_pnl_krw|default:0 }},
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
@@ -198,10 +199,9 @@
     if (pnlData.length > 0) {
         const ctx = document.getElementById('pnlChart').getContext('2d');
         
-        // Create gradient
         const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
-        gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.25)');
+        gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
         
         const chart = new Chart(ctx, {
             type: 'line',
@@ -210,20 +210,35 @@
                     const date = new Date(d.date);
                     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 }),
-                datasets: [{
-                    label: 'Realized P&L (KRW)',
-                    data: pnlData.map(d => d.realized_pnl_krw || 0),
-                    borderColor: '#10b981',
-                    backgroundColor: gradient,
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: '#10b981',
-                    pointHoverBorderColor: '#fff',
-                    pointHoverBorderWidth: 2,
-                }]
+                datasets: [
+                    {
+                        label: 'Portfolio value (₩)',
+                        data: pnlData.map(d => d.ending_balance_krw),
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#3b82f6',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2,
+                        yAxisID: 'y',
+                    },
+                    {
+                        label: 'Realized P&L (₩)',
+                        data: pnlData.map(d => d.realized_pnl_krw || 0),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 1.5,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        yAxisID: 'y1',
+                    }
+                ]
             },
             options: {
                 responsive: true,
@@ -234,7 +249,9 @@
                 },
                 plugins: {
                     legend: {
-                        display: false,
+                        display: true,
+                        position: 'top',
+                        labels: { color: 'rgba(255, 255, 255, 0.8)', boxWidth: 12 }
                     },
                     tooltip: {
                         backgroundColor: 'rgba(30, 30, 46, 0.95)',
@@ -246,31 +263,40 @@
                         cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
-                                return '₩' + context.raw.toLocaleString();
+                                const v = context.raw;
+                                if (v == null) return context.dataset.label + ': —';
+                                return context.dataset.label + ': ₩' + (typeof v === 'number' ? v.toLocaleString() : v);
                             }
                         }
                     }
                 },
                 scales: {
                     x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.05)',
-                            drawBorder: false,
-                        },
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            font: { size: 11 },
-                        }
+                        grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                        ticks: { color: 'rgba(255, 255, 255, 0.5)', font: { size: 11 } }
                     },
                     y: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.05)',
-                            drawBorder: false,
-                        },
+                        type: 'linear',
+                        position: 'left',
+                        grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
                         ticks: {
                             color: 'rgba(255, 255, 255, 0.5)',
                             font: { size: 11 },
                             callback: function(value) {
+                                if (value >= 1e6) return '₩' + (value / 1e6).toFixed(1) + 'M';
+                                return '₩' + (value / 1000).toFixed(0) + 'K';
+                            }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: {
+                            color: 'rgba(16, 185, 129, 0.9)',
+                            font: { size: 10 },
+                            callback: function(value) {
+                                if (value >= 1e6) return '₩' + (value / 1e6).toFixed(1) + 'M';
                                 return '₩' + (value / 1000).toFixed(0) + 'K';
                             }
                         }
@@ -290,7 +316,8 @@
                     const date = new Date(d.date);
                     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 });
-                chart.data.datasets[0].data = filteredData.map(d => d.realized_pnl_krw || 0);
+                chart.data.datasets[0].data = filteredData.map(d => d.ending_balance_krw);
+                chart.data.datasets[1].data = filteredData.map(d => d.realized_pnl_krw || 0);
                 chart.update();
             });
         });

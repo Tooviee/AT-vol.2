@@ -170,8 +170,9 @@ class Database:
     def save_trade(self, order_id: str, symbol: str, side: str,
                    quantity: int, price: float, is_paper: bool = True,
                    exchange_rate: float = 1450.0,
-                   slippage: float = 0, spread: float = 0) -> Trade:
-        """Save a trade execution"""
+                   slippage: float = 0, spread: float = 0,
+                   ending_balance_krw: Optional[float] = None) -> Trade:
+        """Save a trade execution. Optionally pass ending_balance_krw for P&L chart."""
         with self.session_scope() as session:
             trade = Trade(
                 order_id=order_id,
@@ -190,8 +191,8 @@ class Database:
             session.add(trade)
             session.flush()
             
-            # Update daily P&L
-            self._update_daily_pnl(session, trade)
+            # Update daily P&L (trades count, volume, and ending balance for chart)
+            self._update_daily_pnl(session, trade, ending_balance_krw=ending_balance_krw)
             
             return trade
     
@@ -276,8 +277,9 @@ class Database:
     
     # === Daily P&L Operations ===
     
-    def _update_daily_pnl(self, session: Session, trade: Trade) -> None:
-        """Update daily P&L with a new trade"""
+    def _update_daily_pnl(self, session: Session, trade: Trade,
+                          ending_balance_krw: Optional[float] = None) -> None:
+        """Update daily P&L with a new trade. Set ending_balance_krw for dashboard chart."""
         today = date.today()
         daily = session.query(DailyPnL).filter(DailyPnL.date == today).first()
         
@@ -298,6 +300,9 @@ class Database:
             if daily.sell_volume_usd is None:
                 daily.sell_volume_usd = 0
             daily.sell_volume_usd += trade.total_usd
+        
+        if ending_balance_krw is not None:
+            daily.ending_balance_krw = ending_balance_krw
     
     def get_daily_pnl(self, target_date: Optional[date] = None) -> Optional[DailyPnL]:
         """Get daily P&L for a date"""

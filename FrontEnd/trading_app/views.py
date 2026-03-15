@@ -38,8 +38,24 @@ def dashboard(request):
             for pos in positions
         )
         
-        # Get P&L history for chart (last 30 days)
+        # Get P&L history for chart (last 30 days); fill every day for continuous chart
         pnl_history = db.get_pnl_history(days=30)
+        pnl_by_date = {p['date']: p for p in pnl_history} if pnl_history else {}
+        start = date.today() - timedelta(days=29)
+        chart_days = []
+        last_balance = None
+        last_realized = None
+        for i in range(30):
+            d = start + timedelta(days=i)
+            row = pnl_by_date.get(d)
+            if row:
+                last_balance = row.get('ending_balance_krw')
+                last_realized = row.get('realized_pnl_krw', 0)
+            chart_days.append({
+                'date': d,
+                'ending_balance_krw': last_balance,
+                'realized_pnl_krw': last_realized if last_realized is not None else 0,
+            })
         
         context = {
             'positions': positions,
@@ -48,7 +64,7 @@ def dashboard(request):
             'recent_trades': recent_trades,
             'total_positions_value_usd': total_positions_value_usd,
             'total_unrealized_pnl_krw': total_unrealized_pnl_krw,
-            'pnl_history': pnl_history,
+            'pnl_history': chart_days,
         }
         
         return render(request, 'trading_app/dashboard.html', context)
@@ -59,6 +75,8 @@ def dashboard(request):
             'positions': [],
             'daily_pnl': {},
             'recent_trades': [],
+            'total_unrealized_pnl_krw': 0,
+            'pnl_history': [],
         }
         return render(request, 'trading_app/dashboard.html', context)
 

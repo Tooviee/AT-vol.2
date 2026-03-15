@@ -510,12 +510,16 @@ class USAAutoTrader:
                 pnl = (order.avg_fill_price - position.avg_price) * position.quantity
                 self.circuit_breaker.record_trade_result(pnl > 0, pnl)
                 
-                # Record realized P&L to database for daily tracking
+                # Record realized P&L and ending balance to database for daily tracking / chart
                 if self.database:
                     try:
                         exchange_rate = self.exchange_rate_tracker.get_rate()
                         pnl_krw = pnl * exchange_rate
-                        self.database.update_daily_pnl(realized_pnl_krw=pnl_krw, win=(pnl > 0))
+                        ending_krw = self.balance_tracker.get_total_balance()
+                        self.database.update_daily_pnl(
+                            realized_pnl_krw=pnl_krw, win=(pnl > 0),
+                            ending_balance_krw=ending_krw,
+                        )
                     except Exception as e:
                         self.logger.warning(f"Failed to record daily P&L: {e}")
                 
