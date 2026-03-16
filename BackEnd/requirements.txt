@@ -34,7 +34,6 @@ python-multipart==0.0.6
 plotly==5.18.0
 
 # ===== Machine Learning =====
-# 4.1.0 has no macos arm64 wheel and fails to build with modern CMake; >=4.2.0 has wheels
 lightgbm>=4.2.0
 scikit-learn==1.3.2
 joblib==1.3.2
