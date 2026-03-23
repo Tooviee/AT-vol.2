@@ -108,7 +108,8 @@ class USAAutoTrader:
             self.logger
         )
         
-        # Initialize database (normalize path so running from BackEnd/ or repo root uses the same DB)
+        # Initialize database (normalize path so running from BackEnd/ or repo root uses the same DB).
+        # Django dashboard default TRADING_DATABASE_PATH matches this when database.path is BackEnd/data/trading.db.
         db_path_cfg = Path(self.config.database.path)
         if not db_path_cfg.is_absolute():
             repo_root = PROJECT_ROOT.parent  # repo root (one level above BackEnd)
@@ -509,20 +510,31 @@ class USAAutoTrader:
             if order.status.value == 'filled' and order.avg_fill_price:
                 pnl = (order.avg_fill_price - position.avg_price) * position.quantity
                 self.circuit_breaker.record_trade_result(pnl > 0, pnl)
-                
+                exchange_rate = self.exchange_rate_tracker.get_rate()
+                pnl_krw = pnl * exchange_rate
+                outcome = "WIN" if pnl > 0 else "LOSS"
+                pnl_db_note = ""
+
                 # Record realized P&L and ending balance to database for daily tracking / chart
                 if self.database:
                     try:
-                        exchange_rate = self.exchange_rate_tracker.get_rate()
-                        pnl_krw = pnl * exchange_rate
                         ending_krw = self.balance_tracker.get_total_balance()
                         self.database.update_daily_pnl(
                             realized_pnl_krw=pnl_krw, win=(pnl > 0),
                             ending_balance_krw=ending_krw,
                         )
+                        pnl_db_note = " | DailyPnL updated"
                     except Exception as e:
                         self.logger.warning(f"Failed to record daily P&L: {e}")
-                
+                        pnl_db_note = " | DailyPnL save failed"
+                else:
+                    pnl_db_note = " | DailyPnL skipped (no database)"
+
+                self.logger.info(
+                    f"SELL {position.quantity} {symbol} | Realized P&L ({outcome}): "
+                    f"${pnl:+,.2f} USD, {pnl_krw:+,.0f} KRW{pnl_db_note}"
+                )
+
                 # Record trade outcome for ML training
                 if hasattr(self.strategy, 'record_trade_end') and hasattr(position, 'entry_order_id'):
                     self.strategy.record_trade_end(
@@ -533,8 +545,11 @@ class USAAutoTrader:
                         exit_time=datetime.now(),
                         side='buy'  # Assuming long positions
                     )
-            
-            self.logger.info(f"SELL {position.quantity} {symbol}")
+            else:
+                st = getattr(order.status, "value", order.status)
+                self.logger.info(
+                    f"SELL {position.quantity} {symbol} — not filled (status={st})"
+                )
             
             self.health_monitor.record_trade()
             

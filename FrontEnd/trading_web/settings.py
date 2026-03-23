@@ -10,10 +10,22 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Repository root (parent of FrontEnd/). BackEnd/main.py resolves DB the same way:
+#   (repo_root / config database.path) with path "BackEnd/data/trading.db"
+REPO_ROOT = BASE_DIR.parent
+
+# SQLite file written by the trading bot (DailyPnL, positions, trades).
+# Override with env TRADING_DATABASE_PATH if the bot uses a custom database.path.
+TRADING_DATABASE_PATH = os.environ.get(
+    "TRADING_DATABASE_PATH",
+    str((REPO_ROOT / "BackEnd" / "data" / "trading.db").resolve()),
+)
 
 
 # Quick-start development settings - unsuitable for production

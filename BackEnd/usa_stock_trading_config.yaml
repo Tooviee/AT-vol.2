@@ -50,6 +50,7 @@ symbols:
   - HOOD
   - MSTR
   - BMNR
+  - CRCL
 
 # Tech 
   - AVGO
@@ -216,6 +217,7 @@ reconciliation:
 
 # ===== DATABASE =====
 database:
+  # Django dashboard reads the same file (default TRADING_DATABASE_PATH = repo/BackEnd/data/trading.db)
   path: "BackEnd/data/trading.db"
   busy_timeout_ms: 5000
   backup_enabled: true
