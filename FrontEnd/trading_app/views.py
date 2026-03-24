@@ -49,8 +49,23 @@ def dashboard(request):
             d = start + timedelta(days=i)
             row = pnl_by_date.get(d)
             if row:
-                last_balance = row.get('ending_balance_krw')
-                last_realized = row.get('realized_pnl_krw', 0)
+                prev_balance = last_balance
+                current_balance = row.get('ending_balance_krw')
+                raw_realized = row.get('realized_pnl_krw', 0) or 0
+
+                # Some historical rows have ending balance updates but realized P&L left at 0.
+                # For charting, fall back to day-over-day balance delta in that case.
+                if (
+                    raw_realized == 0
+                    and current_balance is not None
+                    and prev_balance is not None
+                ):
+                    last_realized = current_balance - prev_balance
+                else:
+                    last_realized = raw_realized
+
+                if current_balance is not None:
+                    last_balance = current_balance
             chart_days.append({
                 'date': d,
                 'ending_balance_krw': last_balance,

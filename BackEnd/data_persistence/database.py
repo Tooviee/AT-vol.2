@@ -239,6 +239,16 @@ class Database:
                     **{k: v for k, v in kwargs.items() if hasattr(Position, k)}
                 )
                 session.add(position)
+
+            # Keep unrealized P&L fields in sync with current and average prices.
+            current_price = position.current_price_usd
+            if quantity <= 0:
+                position.unrealized_pnl_usd = 0.0
+                position.unrealized_pnl_krw = 0.0
+            elif current_price is not None:
+                unrealized_usd = (current_price - position.avg_price_usd) * position.quantity
+                position.unrealized_pnl_usd = unrealized_usd
+                position.unrealized_pnl_krw = unrealized_usd * exchange_rate
             
             # Explicitly flush to ensure it's written
             session.flush()
