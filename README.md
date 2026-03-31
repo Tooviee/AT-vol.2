@@ -6,7 +6,7 @@ Live dashboard snapshot showing paper-trading balance, P&L trend, recent trades,
 
 [![Watch AT vol.2 trading engine demo video](docs/images/trading-engine-demo-15s.png)](https://youtu.be/As50peBs3wQ)
 
-Short backend terminal demo clip of starting the trading engine and running `python main.py`.
+Short backend terminal demo clip of starting the trading engine and running `python main.py`. Click to view the full video log.
 
 A production-ready, ML-enhanced algorithmic trading system for US stock markets that autonomously generates trading signals, executes trades, and manages risk using a hybrid approach combining technical analysis with machine learning.
 
