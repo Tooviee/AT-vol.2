@@ -4,7 +4,7 @@
 
 Live dashboard snapshot showing paper-trading balance, P&L trend, recent trades, and open positions in one screen.
 
-![AT vol.2 trading engine terminal demo (15s)](docs/images/trading-engine-demo-15s.png)
+[![Watch AT vol.2 trading engine demo video](docs/images/trading-engine-demo-15s.png)](https://youtu.be/As50peBs3wQ)
 
 Short backend terminal demo clip of starting the trading engine and running `python main.py`.
 
