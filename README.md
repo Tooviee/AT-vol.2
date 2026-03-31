@@ -8,6 +8,8 @@ Live dashboard snapshot showing paper-trading balance, P&L trend, recent trades,
 
 Short backend terminal demo clip of starting the trading engine and running `python main.py`. Click to view the full video log.
 
+See more UI examples in [docs/UI_SCREENSHOTS.md](docs/UI_SCREENSHOTS.md).
+
 A production-ready, ML-enhanced algorithmic trading system for US stock markets that autonomously generates trading signals, executes trades, and manages risk using a hybrid approach combining technical analysis with machine learning.
 
 ## 🎯 Overview
@@ -116,6 +118,7 @@ The dashboard will be available locally. See [FrontEnd/README.md](FrontEnd/READM
 - **[BackEnd/README.md](BackEnd/README.md)** - Backend implementation details
 - **[FrontEnd/README.md](FrontEnd/README.md)** - Frontend setup and usage
 - **[BackEnd/TRADING_SYSTEM_PLAN.md](BackEnd/TRADING_SYSTEM_PLAN.md)** - Detailed architecture
+- **[docs/UI_SCREENSHOTS.md](docs/UI_SCREENSHOTS.md)** - Additional UI screenshots and examples
 
 ## 🛠️ Technologies
 
