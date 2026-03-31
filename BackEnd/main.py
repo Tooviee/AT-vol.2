@@ -471,6 +471,13 @@ class USAAutoTrader:
     def _execute_sell(self, symbol: str, signal, position) -> None:
         """Execute a sell order"""
         try:
+            # Snapshot position before execution because executor mutates/removes positions
+            # in balance tracker immediately on fill.
+            entry_avg_price = position.avg_price
+            entry_quantity = position.quantity
+            entry_time = getattr(position, 'entry_time', datetime.now())
+            entry_order_id = getattr(position, 'entry_order_id', None)
+
             # Create and submit order
             order = self.order_manager.create_order(
                 symbol=symbol,
@@ -508,7 +515,8 @@ class USAAutoTrader:
             
             # Calculate P&L
             if order.status.value == 'filled' and order.avg_fill_price:
-                pnl = (order.avg_fill_price - position.avg_price) * position.quantity
+                realized_qty = order.filled_quantity or entry_quantity
+                pnl = (order.avg_fill_price - entry_avg_price) * realized_qty
                 self.circuit_breaker.record_trade_result(pnl > 0, pnl)
                 exchange_rate = self.exchange_rate_tracker.get_rate()
                 pnl_krw = pnl * exchange_rate
@@ -531,17 +539,17 @@ class USAAutoTrader:
                     pnl_db_note = " | DailyPnL skipped (no database)"
 
                 self.logger.info(
-                    f"SELL {position.quantity} {symbol} | Realized P&L ({outcome}): "
+                    f"SELL {realized_qty} {symbol} | Realized P&L ({outcome}): "
                     f"${pnl:+,.2f} USD, {pnl_krw:+,.0f} KRW{pnl_db_note}"
                 )
 
                 # Record trade outcome for ML training
-                if hasattr(self.strategy, 'record_trade_end') and hasattr(position, 'entry_order_id'):
+                if hasattr(self.strategy, 'record_trade_end') and entry_order_id:
                     self.strategy.record_trade_end(
-                        order_id=position.entry_order_id,
-                        entry_price=position.avg_price,
+                        order_id=entry_order_id,
+                        entry_price=entry_avg_price,
                         exit_price=order.avg_fill_price,
-                        entry_time=position.entry_time,
+                        entry_time=entry_time,
                         exit_time=datetime.now(),
                         side='buy'  # Assuming long positions
                     )

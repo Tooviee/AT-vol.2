@@ -1,5 +1,13 @@
 # AT vol.2 - AI-Powered Algorithmic Trading System
 
+![AT vol.2 dashboard overview](docs/images/dashboard-overview.png)
+
+Live dashboard snapshot showing paper-trading balance, P&L trend, recent trades, and open positions in one screen.
+
+![AT vol.2 trading engine terminal demo (15s)](docs/images/trading-engine-demo-15s.png)
+
+Short backend terminal demo clip of starting the trading engine and running `python main.py`.
+
 A production-ready, ML-enhanced algorithmic trading system for US stock markets that autonomously generates trading signals, executes trades, and manages risk using a hybrid approach combining technical analysis with machine learning.
 
 ## 🎯 Overview

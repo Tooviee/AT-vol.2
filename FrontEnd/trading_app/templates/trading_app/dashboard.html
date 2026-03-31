@@ -1,5 +1,6 @@
 {% extends 'trading_app/base.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Dashboard{% endblock %}
 
@@ -10,10 +11,10 @@
 <div class="grid grid-cols-4" style="margin-bottom: var(--space-6);">
     <div class="card stat-card">
         <div class="card-body">
-            <div class="stat-label">Total Balance</div>
+            <div class="stat-label">Total Balance ({{ trading_mode|upper }})</div>
             <div class="stat-value font-mono">
-                {% if daily_pnl.ending_balance_krw %}
-                    ₩{{ daily_pnl.ending_balance_krw|floatformat:0 }}
+                {% if display_balance_krw is not None %}
+                    ₩{{ display_balance_krw|floatformat:0|intcomma }}
                 {% else %}
                     N/A
                 {% endif %}
@@ -25,7 +26,7 @@
         <div class="card-body">
             <div class="stat-label">Today's P&L</div>
             <div class="stat-value font-mono {% if daily_pnl.realized_pnl_krw >= 0 %}positive{% else %}negative{% endif %}">
-                {% if daily_pnl.realized_pnl_krw >= 0 %}+{% endif %}₩{{ daily_pnl.realized_pnl_krw|default:0|floatformat:0 }}
+                {% if daily_pnl.realized_pnl_krw >= 0 %}+{% endif %}₩{{ daily_pnl.realized_pnl_krw|default:0|floatformat:0|intcomma }}
             </div>
             <div class="stat-change {% if daily_pnl.realized_pnl_krw >= 0 %}up{% else %}down{% endif %}">
                 <span>{% if daily_pnl.realized_pnl_krw >= 0 %}↑{% else %}↓{% endif %}</span>
@@ -38,7 +39,7 @@
         <div class="card-body">
             <div class="stat-label">Unrealized P&L</div>
             <div class="stat-value font-mono {% if total_unrealized_pnl_krw >= 0 %}positive{% else %}negative{% endif %}">
-                {% if total_unrealized_pnl_krw >= 0 %}+{% endif %}₩{{ total_unrealized_pnl_krw|floatformat:0 }}
+                {% if total_unrealized_pnl_krw >= 0 %}+{% endif %}₩{{ total_unrealized_pnl_krw|floatformat:0|intcomma }}
             </div>
         </div>
     </div>
@@ -61,9 +62,9 @@
                 Portfolio Value &amp; P&L (Last 30 Days)
             </h3>
             <div class="chart-controls">
-                <button class="chart-time-btn active" data-days="7">7D</button>
+                <button class="chart-time-btn" data-days="7">7D</button>
                 <button class="chart-time-btn" data-days="14">14D</button>
-                <button class="chart-time-btn" data-days="30">30D</button>
+                <button class="chart-time-btn active" data-days="30">30D</button>
             </div>
         </div>
         <div class="card-body">
@@ -190,7 +191,7 @@
         {% for pnl in pnl_history %}
         {
             date: '{{ pnl.date|date:"Y-m-d" }}',
-            ending_balance_krw: {% if pnl.ending_balance_krw is not None %}{{ pnl.ending_balance_krw|floatformat:0 }}{% else %}null{% endif %},
+            ending_balance_krw: {% if pnl.ending_balance_krw != None %}{{ pnl.ending_balance_krw|floatformat:0 }}{% else %}null{% endif %},
             realized_pnl_krw: {{ pnl.realized_pnl_krw|default:0 }},
         }{% if not forloop.last %},{% endif %}
         {% endfor %}

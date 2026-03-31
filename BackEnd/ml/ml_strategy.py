@@ -52,14 +52,47 @@ class MLEnhancedStrategy(USAStrategy):
         super().__init__(config, logger)
         
         self.ml_config = ml_config or {}
+
+        # Resolve ML paths from config robustly.
+        # Supports running from repo root or from BackEnd/.
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        backend_root = Path(__file__).resolve().parent.parent
+
+        def _resolve_path(path_str: str, fallback: Path) -> str:
+            if not path_str:
+                return str(fallback)
+            p = Path(path_str)
+            if p.is_absolute():
+                return str(p)
+            if p.exists():
+                return str(p.resolve())
+            repo_candidate = (repo_root / p)
+            if repo_candidate.exists():
+                return str(repo_candidate.resolve())
+            backend_candidate = (backend_root / p)
+            if backend_candidate.exists():
+                return str(backend_candidate.resolve())
+            # If it doesn't exist yet (first run), prefer repo-root-relative path.
+            return str(repo_candidate.resolve())
+
+        model_path = _resolve_path(
+            self.ml_config.get('model_path', "BackEnd/ml/models/confidence_model.pkl"),
+            repo_root / "BackEnd/ml/models/confidence_model.pkl"
+        )
+        data_path = _resolve_path(
+            self.ml_config.get('data_path', "BackEnd/ml/training_data"),
+            repo_root / "BackEnd/ml/training_data"
+        )
         
         # ML components
         self.feature_extractor = FeatureExtractor(self.logger)
         self.confidence_booster = MLConfidenceBooster(
             self.ml_config,
+            model_path=model_path,
             logger=self.logger
         )
         self.training_data_manager = TrainingDataManager(
+            data_path=data_path,
             logger=self.logger
         )
         
@@ -83,7 +116,8 @@ class MLEnhancedStrategy(USAStrategy):
         
         self.logger.info(
             f"ML-Enhanced Strategy initialized. ML: {ml_status}. "
-            f"Thresholds: ML={self.min_confidence:.2f}, TA-only={self.min_confidence_ta_only:.2f}"
+            f"Thresholds: ML={self.min_confidence:.2f}, TA-only={self.min_confidence_ta_only:.2f}. "
+            f"Model path: {model_path} | Data path: {data_path}"
         )
     
     def generate_signal(self, df: pd.DataFrame, symbol: str,

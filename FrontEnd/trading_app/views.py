@@ -72,6 +72,26 @@ def dashboard(request):
                 'realized_pnl_krw': last_realized if last_realized is not None else 0,
             })
         
+        # Trading mode label: infer from today's P&L, then recent trades/positions
+        trading_mode = 'unknown'
+        is_paper = (daily_pnl or {}).get('is_paper') if daily_pnl else None
+        if is_paper is None and recent_trades:
+            is_paper = recent_trades[0].get('is_paper')
+        if is_paper is None and positions:
+            is_paper = positions[0].get('is_paper')
+        if is_paper is True:
+            trading_mode = 'paper'
+        elif is_paper is False:
+            trading_mode = 'real'
+
+        # Total balance for card: today's ending balance, else latest known from chart series
+        display_balance_krw = (daily_pnl or {}).get('ending_balance_krw')
+        if display_balance_krw is None and chart_days:
+            for row in reversed(chart_days):
+                if row.get('ending_balance_krw') is not None:
+                    display_balance_krw = row.get('ending_balance_krw')
+                    break
+
         context = {
             'positions': positions,
             'position_count': len(positions),
@@ -80,6 +100,8 @@ def dashboard(request):
             'total_positions_value_usd': total_positions_value_usd,
             'total_unrealized_pnl_krw': total_unrealized_pnl_krw,
             'pnl_history': chart_days,
+            'trading_mode': trading_mode,
+            'display_balance_krw': display_balance_krw,
         }
         
         return render(request, 'trading_app/dashboard.html', context)
@@ -92,6 +114,8 @@ def dashboard(request):
             'recent_trades': [],
             'total_unrealized_pnl_krw': 0,
             'pnl_history': [],
+            'trading_mode': 'unknown',
+            'display_balance_krw': None,
         }
         return render(request, 'trading_app/dashboard.html', context)
 
