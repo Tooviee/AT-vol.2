@@ -42,6 +42,15 @@ cd "C:\Users\PRO\Desktop\AT vol.2\FrontEnd"
 
 The server will display the local URL when it starts. Access the dashboard at that address.
 
+## Trading database path (P&L / positions)
+
+The dashboard reads the **same SQLite file** the trading bot writes:
+
+- **Default:** `<repo>/BackEnd/data/trading.db` — matches `database.path` in [`BackEnd/usa_stock_trading_config.yaml`](../BackEnd/usa_stock_trading_config.yaml) (`BackEnd/data/trading.db` relative to repo root).
+- **Override:** set environment variable `TRADING_DATABASE_PATH` to an absolute path, or change `TRADING_DATABASE_PATH` in `trading_web/settings.py`.
+
+Realized P&L and win/loss counts for the dashboard come from the `daily_pnl` table, updated when sells complete in the bot (`update_daily_pnl`).
+
 ## Features Implemented
 
 ### Core Features ✅

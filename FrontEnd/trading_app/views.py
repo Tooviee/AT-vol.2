@@ -38,9 +38,60 @@ def dashboard(request):
             for pos in positions
         )
         
-        # Get P&L history for chart (last 30 days)
+        # Get P&L history for chart (last 30 days); fill every day for continuous chart
         pnl_history = db.get_pnl_history(days=30)
+        pnl_by_date = {p['date']: p for p in pnl_history} if pnl_history else {}
+        start = date.today() - timedelta(days=29)
+        chart_days = []
+        last_balance = None
+        last_realized = None
+        for i in range(30):
+            d = start + timedelta(days=i)
+            row = pnl_by_date.get(d)
+            if row:
+                prev_balance = last_balance
+                current_balance = row.get('ending_balance_krw')
+                raw_realized = row.get('realized_pnl_krw', 0) or 0
+
+                # Some historical rows have ending balance updates but realized P&L left at 0.
+                # For charting, fall back to day-over-day balance delta in that case.
+                if (
+                    raw_realized == 0
+                    and current_balance is not None
+                    and prev_balance is not None
+                ):
+                    last_realized = current_balance - prev_balance
+                else:
+                    last_realized = raw_realized
+
+                if current_balance is not None:
+                    last_balance = current_balance
+            chart_days.append({
+                'date': d,
+                'ending_balance_krw': last_balance,
+                'realized_pnl_krw': last_realized if last_realized is not None else 0,
+            })
         
+        # Trading mode label: infer from today's P&L, then recent trades/positions
+        trading_mode = 'unknown'
+        is_paper = (daily_pnl or {}).get('is_paper') if daily_pnl else None
+        if is_paper is None and recent_trades:
+            is_paper = recent_trades[0].get('is_paper')
+        if is_paper is None and positions:
+            is_paper = positions[0].get('is_paper')
+        if is_paper is True:
+            trading_mode = 'paper'
+        elif is_paper is False:
+            trading_mode = 'real'
+
+        # Total balance for card: today's ending balance, else latest known from chart series
+        display_balance_krw = (daily_pnl or {}).get('ending_balance_krw')
+        if display_balance_krw is None and chart_days:
+            for row in reversed(chart_days):
+                if row.get('ending_balance_krw') is not None:
+                    display_balance_krw = row.get('ending_balance_krw')
+                    break
+
         context = {
             'positions': positions,
             'position_count': len(positions),
@@ -48,7 +99,9 @@ def dashboard(request):
             'recent_trades': recent_trades,
             'total_positions_value_usd': total_positions_value_usd,
             'total_unrealized_pnl_krw': total_unrealized_pnl_krw,
-            'pnl_history': pnl_history,
+            'pnl_history': chart_days,
+            'trading_mode': trading_mode,
+            'display_balance_krw': display_balance_krw,
         }
         
         return render(request, 'trading_app/dashboard.html', context)
@@ -59,6 +112,10 @@ def dashboard(request):
             'positions': [],
             'daily_pnl': {},
             'recent_trades': [],
+            'total_unrealized_pnl_krw': 0,
+            'pnl_history': [],
+            'trading_mode': 'unknown',
+            'display_balance_krw': None,
         }
         return render(request, 'trading_app/dashboard.html', context)
 

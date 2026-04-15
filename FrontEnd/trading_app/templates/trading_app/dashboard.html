@@ -1,5 +1,6 @@
 {% extends 'trading_app/base.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Dashboard{% endblock %}
 
@@ -10,10 +11,10 @@
 <div class="grid grid-cols-4" style="margin-bottom: var(--space-6);">
     <div class="card stat-card">
         <div class="card-body">
-            <div class="stat-label">Total Balance</div>
+            <div class="stat-label">Total Balance ({{ trading_mode|upper }})</div>
             <div class="stat-value font-mono">
-                {% if daily_pnl.ending_balance_krw %}
-                    ₩{{ daily_pnl.ending_balance_krw|floatformat:0 }}
+                {% if display_balance_krw is not None %}
+                    ₩{{ display_balance_krw|floatformat:0|intcomma }}
                 {% else %}
                     N/A
                 {% endif %}
@@ -25,7 +26,7 @@
         <div class="card-body">
             <div class="stat-label">Today's P&L</div>
             <div class="stat-value font-mono {% if daily_pnl.realized_pnl_krw >= 0 %}positive{% else %}negative{% endif %}">
-                {% if daily_pnl.realized_pnl_krw >= 0 %}+{% endif %}₩{{ daily_pnl.realized_pnl_krw|default:0|floatformat:0 }}
+                {% if daily_pnl.realized_pnl_krw >= 0 %}+{% endif %}₩{{ daily_pnl.realized_pnl_krw|default:0|floatformat:0|intcomma }}
             </div>
             <div class="stat-change {% if daily_pnl.realized_pnl_krw >= 0 %}up{% else %}down{% endif %}">
                 <span>{% if daily_pnl.realized_pnl_krw >= 0 %}↑{% else %}↓{% endif %}</span>
@@ -38,7 +39,7 @@
         <div class="card-body">
             <div class="stat-label">Unrealized P&L</div>
             <div class="stat-value font-mono {% if total_unrealized_pnl_krw >= 0 %}positive{% else %}negative{% endif %}">
-                {% if total_unrealized_pnl_krw >= 0 %}+{% endif %}₩{{ total_unrealized_pnl_krw|floatformat:0 }}
+                {% if total_unrealized_pnl_krw >= 0 %}+{% endif %}₩{{ total_unrealized_pnl_krw|floatformat:0|intcomma }}
             </div>
         </div>
     </div>
@@ -58,12 +59,12 @@
         <div class="card-header">
             <h3 class="card-title">
                 <span class="card-title-icon">📈</span>
-                P&L History (Last 30 Days)
+                Portfolio Value &amp; P&L (Last 30 Days)
             </h3>
             <div class="chart-controls">
-                <button class="chart-time-btn active" data-days="7">7D</button>
+                <button class="chart-time-btn" data-days="7">7D</button>
                 <button class="chart-time-btn" data-days="14">14D</button>
-                <button class="chart-time-btn" data-days="30">30D</button>
+                <button class="chart-time-btn active" data-days="30">30D</button>
             </div>
         </div>
         <div class="card-body">
@@ -185,11 +186,12 @@
 
 {% block extra_js %}
 <script>
-    // P&L Chart with dark theme
+    // Portfolio value & P&L Chart (ending balance shows changes from buys/sells)
     const pnlData = [
         {% for pnl in pnl_history %}
         {
             date: '{{ pnl.date|date:"Y-m-d" }}',
+            ending_balance_krw: {% if pnl.ending_balance_krw != None %}{{ pnl.ending_balance_krw|floatformat:0 }}{% else %}null{% endif %},
             realized_pnl_krw: {{ pnl.realized_pnl_krw|default:0 }},
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
@@ -198,10 +200,9 @@
     if (pnlData.length > 0) {
         const ctx = document.getElementById('pnlChart').getContext('2d');
         
-        // Create gradient
         const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
-        gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.25)');
+        gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
         
         const chart = new Chart(ctx, {
             type: 'line',
@@ -210,20 +211,35 @@
                     const date = new Date(d.date);
                     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 }),
-                datasets: [{
-                    label: 'Realized P&L (KRW)',
-                    data: pnlData.map(d => d.realized_pnl_krw || 0),
-                    borderColor: '#10b981',
-                    backgroundColor: gradient,
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: '#10b981',
-                    pointHoverBorderColor: '#fff',
-                    pointHoverBorderWidth: 2,
-                }]
+                datasets: [
+                    {
+                        label: 'Portfolio value (₩)',
+                        data: pnlData.map(d => d.ending_balance_krw),
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#3b82f6',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2,
+                        yAxisID: 'y',
+                    },
+                    {
+                        label: 'Realized P&L (₩)',
+                        data: pnlData.map(d => d.realized_pnl_krw || 0),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 1.5,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        yAxisID: 'y1',
+                    }
+                ]
             },
             options: {
                 responsive: true,
@@ -234,7 +250,9 @@
                 },
                 plugins: {
                     legend: {
-                        display: false,
+                        display: true,
+                        position: 'top',
+                        labels: { color: 'rgba(255, 255, 255, 0.8)', boxWidth: 12 }
                     },
                     tooltip: {
                         backgroundColor: 'rgba(30, 30, 46, 0.95)',
@@ -246,31 +264,40 @@
                         cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
-                                return '₩' + context.raw.toLocaleString();
+                                const v = context.raw;
+                                if (v == null) return context.dataset.label + ': —';
+                                return context.dataset.label + ': ₩' + (typeof v === 'number' ? v.toLocaleString() : v);
                             }
                         }
                     }
                 },
                 scales: {
                     x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.05)',
-                            drawBorder: false,
-                        },
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            font: { size: 11 },
-                        }
+                        grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                        ticks: { color: 'rgba(255, 255, 255, 0.5)', font: { size: 11 } }
                     },
                     y: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.05)',
-                            drawBorder: false,
-                        },
+                        type: 'linear',
+                        position: 'left',
+                        grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
                         ticks: {
                             color: 'rgba(255, 255, 255, 0.5)',
                             font: { size: 11 },
                             callback: function(value) {
+                                if (value >= 1e6) return '₩' + (value / 1e6).toFixed(1) + 'M';
+                                return '₩' + (value / 1000).toFixed(0) + 'K';
+                            }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: {
+                            color: 'rgba(16, 185, 129, 0.9)',
+                            font: { size: 10 },
+                            callback: function(value) {
+                                if (value >= 1e6) return '₩' + (value / 1e6).toFixed(1) + 'M';
                                 return '₩' + (value / 1000).toFixed(0) + 'K';
                             }
                         }
@@ -290,7 +317,8 @@
                     const date = new Date(d.date);
                     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 });
-                chart.data.datasets[0].data = filteredData.map(d => d.realized_pnl_krw || 0);
+                chart.data.datasets[0].data = filteredData.map(d => d.ending_balance_krw);
+                chart.data.datasets[1].data = filteredData.map(d => d.realized_pnl_krw || 0);
                 chart.update();
             });
         });

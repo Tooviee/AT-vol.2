@@ -229,14 +229,16 @@ class PaperTradingExecutor:
             f"{' [PARTIAL]' if is_partial else ''}"
         )
         
-        # Save to database if available
+        # Save to database if available (include ending balance for dashboard P&L chart)
         if self.database:
             try:
                 # Get exchange rate from balance tracker if available
                 exchange_rate = 1450.0  # Default fallback
                 if hasattr(self.balance_tracker, 'get_exchange_rate'):
                     exchange_rate = self.balance_tracker.get_exchange_rate()
-                
+                ending_balance_krw = None
+                if hasattr(self.balance_tracker, 'get_total_balance'):
+                    ending_balance_krw = self.balance_tracker.get_total_balance()
                 self.database.save_trade(
                     order_id=order_id,
                     symbol=symbol,
@@ -246,7 +248,8 @@ class PaperTradingExecutor:
                     is_paper=True,
                     exchange_rate=exchange_rate,
                     slippage=slippage_adj,
-                    spread=spread_adj
+                    spread=spread_adj,
+                    ending_balance_krw=ending_balance_krw,
                 )
             except Exception as e:
                 self.logger.warning(f"Failed to save trade to database: {e}")

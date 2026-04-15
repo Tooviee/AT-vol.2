@@ -1,6 +1,10 @@
 """
 Database Adapter - Connects Django to existing SQLAlchemy trading database.
 This allows Django to read from the same database without conflicts.
+
+Default DB file matches BackEnd usa_stock_trading_config.yaml `database.path`
+("BackEnd/data/trading.db" relative to repo root). Override via Django setting
+TRADING_DATABASE_PATH or env TRADING_DATABASE_PATH.
 """
 
 import sys
@@ -36,7 +40,7 @@ class TradingDatabaseAdapter:
             db_path: Path to trading database. If None, uses default BackEnd/data/trading.db
         """
         if db_path is None:
-            # Default to BackEnd/data/trading.db
+            # Same file as BackEnd: <repo>/BackEnd/data/trading.db (see trading_web.settings)
             db_path = BACKEND_PATH / "data" / "trading.db"
         
         self.db_path = Path(db_path)
@@ -339,8 +343,11 @@ _db_adapter: Optional[TradingDatabaseAdapter] = None
 
 
 def get_db_adapter() -> TradingDatabaseAdapter:
-    """Get or create database adapter instance"""
+    """Get or create database adapter instance (path from Django settings)."""
     global _db_adapter
     if _db_adapter is None:
-        _db_adapter = TradingDatabaseAdapter()
+        from django.conf import settings
+
+        path = getattr(settings, "TRADING_DATABASE_PATH", None)
+        _db_adapter = TradingDatabaseAdapter(path)
     return _db_adapter
